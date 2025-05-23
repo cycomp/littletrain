@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SVG Track Editor</title>
+  <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+  <!-- SVG Track Editor View -->
+  <div id="editorView" class="full-screen">
+    <svg id="editor" xmlns="http://www.w3.org/2000/svg">
+      <g class="grid"></g>
+      <g id="bin" transform="translate(730,530)" cursor="pointer">
+        <circle cx="0" cy="0" r="2.2rem" fill="#007bff" />
+        <text x="0" y="15" font-size="2.7rem" text-anchor="middle" fill="red">🗑️</text>
+      </g>
+    </svg>
+    
+    <button id="save" aria-label="Save Layout">💾</button>
+    <button id="load" aria-label="Load Layout">📂</button>
+    <button id="render" aria-label="Run Trains">🚂</button>
+
+    <div id="track-palette">
+      <button id="track" aria-label="Place Track">
+        <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Sleepers -->
+          <g stroke="#8B4513" stroke-width="10">
+            <line x1="10" y1="30" x2="10" y2="70" />
+            <line x1="30" y1="30" x2="30" y2="70" />
+            <line x1="50" y1="30" x2="50" y2="70" />
+            <line x1="70" y1="30" x2="70" y2="70" />
+            <line x1="90" y1="30" x2="90" y2="70" />
+          </g>
+          <!-- Rails -->
+          <g stroke="black" stroke-width="6">
+            <line x1="0" y1="40" x2="100" y2="40" />
+            <line x1="0" y1="60" x2="100" y2="60" />
+          </g>
+        </svg>
+      </button>
+
+      <div id="track-type-menu" hidden>
+        <button data-type="straight" class="track-icon-button menu-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="0" y1="24" x2="48" y2="24" stroke="black" stroke-width="4"/>
+          </svg>
+        </button>
+        
+        <button data-type="curved90" class="track-icon-button menu-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M0 5 A 43 43 0 0 1 43 48" stroke="black" stroke-width="4" fill="none"/>
+          </svg>
+        </button>
+        
+        <button data-type="curved45" class="track-icon-button menu-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M0 5 A 40 40 0 0 1 28.28 16.72" stroke="black" stroke-width="4" fill="none" />
+          </svg>
+        </button>
+        
+        <button data-type="points" class="track-icon-button menu-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="0" y1="24" x2="40" y2="24" stroke="black" stroke-width="4"/>
+            <path d="M0 24 A 80 80 0 0 0 40 10" stroke="black" stroke-width="4" fill="none" />
+          </svg>
+        </button>
+
+      </div>
+    
+      <div id="track-piece-menu">
+        <!-- This will be filled dynamically -->
+      </div>
+    </div>
+
+  </div>
+
+  
+  <dialog id="save_layout_dialog">
+    <form method="dialog" id="layout-form">
+      <h2>Save Layout</h2>
+  
+      <label>
+        Enter Name:
+        <input type="text" id="layout-name" name="layout-name" required />
+      </label>
+      <button type="submit" id="save-layout-btn">Save Layout</button>
+      <div style="text-align: right;">
+        <button type="button" id="cancel-save">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="load_layout_dialog">
+    <form method="dialog" id="layout-form">
+      <h2>Load Layout</h2>
+  
+      <ul id="saved-layouts"></ul>
+  
+      <div style="text-align: right;">
+        <button type="button" id="cancel-load">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast-message" class="toast hidden"></div>
+    
+
+  <!-- Babylon.js Simulation View -->
+  <div id="simulationView" class="full-screen hidden">
+    <canvas id="renderCanvas"></canvas>
+    <button id="toEditor" aria-label="Back to editor">✏️</button>
+    <button id="switchCameras" aria-label="Switch Cameras">🎥</button>
+    <button id="increaseSpeed" aria-label="Increase Speed">➕</button>
+    <button id="decreaseSpeed" aria-label="Decrease Speed">➖</button>
+    
+    
+  </div>
+
+
+
+  
+
+
+  <script src="babylon.js"></script>
+  <script type="module" defer src="main.js"></script>
+ <script type="module" defer src="trackEditor.js"></script>
+  <script type="module" defer src="saveLoadLayouts.js"></script>
+  
+</body>
+
+  
+</html>
