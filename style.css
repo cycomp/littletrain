@@ -16,6 +16,12 @@ html, body {
       flex-direction: column;
     }
 
+button {
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none;     /* IE/Edge */
+}
+
 
     #toEditor {
       position: absolute;
@@ -135,6 +141,43 @@ html, body {
       z-index: 10;
       touch-action: manipulation;
     }
+
+   #bin {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      font-size: 2.7rem;
+      padding: 0.3rem;
+      border: none;
+      border-radius: 50%;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      z-index: 10;
+      touch-action: manipulation;
+    }
+
+    #rotate {
+      position: absolute;
+      bottom: 7rem;
+      right: 1rem;
+      padding: 0.6rem;
+      border: none;
+      border-radius: 50%;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      z-index: 10;
+      touch-action: manipulation;
+    }
+#rotate svg {
+  background-color: transparent;
+  border: none;
+  display: block;
+  width: 3.2rem;
+  height: 3.2rem;
+}
+
 
 #track {
   position: absolute;
