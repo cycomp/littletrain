@@ -237,9 +237,6 @@ function getClosestEndpoint(targetPiece) {
 document.addEventListener('keydown', (e) => {
   if (!activePiece) return;
 
-  // Store rotation if not already there
-  if (activePiece.rotation === undefined) activePiece.rotation = 0;
-
   if (e.key === 'ArrowLeft') {
     rotatePiece(activePiece, -45)
   }
@@ -255,6 +252,10 @@ document.addEventListener('keydown', (e) => {
 function rotatePiece(piece, rotation) {
   console.log(piece, rotation);
   
+  // Store rotation if not already there
+  if (activePiece.rotation === undefined) activePiece.rotation = 0;
+
+  
   piece.rotation += rotation;
   
   // Snap rotation to 0-360
@@ -266,6 +267,7 @@ function rotatePiece(piece, rotation) {
 
   
 export function updateTransform(target) {
+  console.log(target);
   const transform = target.getAttribute('transform');
   const match = transform.match(/translate\(([^)]+)\)/);
   if (!match) return;
@@ -275,6 +277,7 @@ export function updateTransform(target) {
   const rotation = target.rotation || 0;
 
   target.setAttribute('transform', `translate(${x}, ${y}) rotate(${rotation})`);
+  console.log(target);
 }
 
 let activePiece;
