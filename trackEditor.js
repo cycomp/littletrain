@@ -51,6 +51,27 @@ const trackPieces = {
   ],
 };
 
+document.getElementById("rotate").addEventListener("click", rotateActivePiece);
+
+function rotateActivePiece() {
+  console.log("rotate active piece")
+  console.log(activePiece);
+  if (activePiece) {
+    rotatePiece(activePiece, 45);    
+  }
+}
+
+document.getElementById("bin").addEventListener("click", deleteActivePiece);
+
+function deleteActivePiece() {
+  console.log(activePiece);
+  if (activePiece) {
+    allPieces = allPieces.filter(p => p !== activePiece);
+    svg.removeChild(activePiece);
+    activePiece = undefined;
+  }
+}
+
 
 const trackButton = document.getElementById("track");
 const trackTypeMenu = document.getElementById("track-type-menu");
@@ -171,12 +192,12 @@ function drawGrid() {
 export let allPieces = [];
 
 function getTransformedEndpoint(g, point) {
-  console.log(g, point);
+  //console.log(g, point);
   const svgPoint = svg.createSVGPoint();
   svgPoint.x = point.x;
   svgPoint.y = point.y;
   const ctm = g.getCTM();
-  console.log(ctm);
+  //console.log(ctm);
   return svgPoint.matrixTransform(ctm);
 }
 
@@ -214,23 +235,34 @@ function getClosestEndpoint(targetPiece) {
 
 
 document.addEventListener('keydown', (e) => {
-  if (!dragTarget) return;
+  if (!activePiece) return;
 
   // Store rotation if not already there
-  if (dragTarget.rotation === undefined) dragTarget.rotation = 0;
+  if (activePiece.rotation === undefined) activePiece.rotation = 0;
 
   if (e.key === 'ArrowLeft') {
-    dragTarget.rotation -= 45;
+    rotatePiece(activePiece, -45)
   }
   if (e.key === 'ArrowRight') {
-    dragTarget.rotation += 45;
+    rotatePiece(activePiece, 45)
   }
 
-  // Snap rotation to 0-360
-  dragTarget.rotation = (dragTarget.rotation + 360) % 360;
-
-  updateTransform(dragTarget);
+  if (e.key === 'Delete' || e.key === "Backspace") {
+    deleteActivePiece();
+  }
 });
+
+function rotatePiece(piece, rotation) {
+  console.log(piece, rotation);
+  
+  piece.rotation += rotation;
+  
+  // Snap rotation to 0-360
+  piece.rotation = (piece.rotation + 360) % 360;
+  
+  updateTransform(piece);
+  
+}
 
   
 export function updateTransform(target) {
@@ -245,18 +277,42 @@ export function updateTransform(target) {
   target.setAttribute('transform', `translate(${x}, ${y}) rotate(${rotation})`);
 }
 
+let activePiece;
 
 document.addEventListener('pointerdown', (e) => {
   const icon = e.target.closest('.track-icon');
   const piece = e.target.closest('.track-piece');
+  console.log(e.target);
 
   if (icon) {
     const type = icon.dataset.type;
-    dragTarget = createPiece(type, e.clientX, e.clientY);
+    let newPiece = createPiece(type, e.clientX, e.clientY);
+    dragTarget = newPiece;
     svg.appendChild(dragTarget); // <--- make sure it's added to the SVG!
+    if (activePiece) {
+      changePieceColour(activePiece, "black");
+    }
+    activePiece = newPiece;
+    changePieceColour(newPiece, "red");
   }
   else if (piece) {
     dragTarget = piece;
+    console.log(piece);
+    if (activePiece) {
+      changePieceColour(activePiece, "black");
+    }
+    activePiece = piece;
+    changePieceColour(piece, "red");
+  } else {
+    //deselect active piece if the rotation or delete buttons hasn't been clicked on
+    console.log(e.target.classList);
+    if (!e.target.classList.contains("pieceEffector")) {
+      if (activePiece) {
+        changePieceColour(activePiece, "black");
+        activePiece = undefined;
+      }
+    }
+    
   }
 
   if(dragTarget) {
@@ -266,6 +322,14 @@ document.addEventListener('pointerdown', (e) => {
     const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
   }
 });
+
+function changePieceColour(piece, colourString) {
+  const descendants = piece.querySelectorAll('*');
+  
+  descendants.forEach(el => {
+    el.setAttribute('stroke', colourString);
+  });
+}
 
 svg.addEventListener('pointermove', (e) => {
   if(dragTarget) {
@@ -289,14 +353,14 @@ svg.addEventListener('pointerup', (e) => {
     pt.y = e.clientY;
     const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
 
-    // Check if dropped over the bin
+    /* Check if dropped over the bin
     if (isOverBin(cursorpt.x, cursorpt.y)) {
       svg.removeChild(dragTarget);
       allPieces = allPieces.filter(p => p !== dragTarget);
       dragTarget = null;
       return;
     }
-
+*/
     
     const snappedX = Math.round(cursorpt.x / gridSize) * gridSize;
     const snappedY = Math.round(cursorpt.y / gridSize) * gridSize;
