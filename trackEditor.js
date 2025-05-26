@@ -1,5 +1,82 @@
 
 const svg = document.getElementById('editor');
+const viewport = document.getElementById("viewport");
+
+let viewState = {
+  scale: 1,
+  x: 0,
+  y: 0
+};
+
+function updateViewTransform() {
+  viewport.setAttribute(
+    "transform",
+    `translate(${viewState.x}, ${viewState.y}) scale(${viewState.scale})`
+  );
+}
+
+const minScale = 0.2;
+const maxScale = 4;
+
+svg.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const zoomFactor = 1.1;
+  const mouse = svg.createSVGPoint();
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  const cursor = mouse.matrixTransform(svg.getScreenCTM().inverse());
+
+  const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+  const proposedScale = viewState.scale * scaleDelta;
+
+  
+  // Clamp the scale
+  const clampedScale = Math.max(minScale, Math.min(maxScale, proposedScale));
+
+  // If scale was clamped, recompute delta so zoom stays centered
+  const actualScaleDelta = clampedScale / viewState.scale;
+
+  // Adjust translation to keep zoom centered on cursor
+  viewState.x = cursor.x - ((cursor.x - viewState.x) * actualScaleDelta);
+  viewState.y = cursor.y - ((cursor.y - viewState.y) * actualScaleDelta);
+  viewState.scale = clampedScale;
+  
+  updateViewTransform();
+  drawGrid();
+}, { passive: false });
+
+
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+
+svg.addEventListener("pointerdown", (e) => {
+  if (e.target === svg) {
+    isPanning = true;
+    panStart = { x: e.clientX, y: e.clientY };
+    svg.setPointerCapture(e.pointerId);
+  }
+});
+
+svg.addEventListener("pointermove", (e) => {
+  if (isPanning) {
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    viewState.x += dx / viewState.scale;
+    viewState.y += dy / viewState.scale;
+    panStart = { x: e.clientX, y: e.clientY };
+    updateViewTransform();
+    drawGrid();
+  }
+});
+
+svg.addEventListener("pointerup", (e) => {
+  if (isPanning) {
+    isPanning = false;
+    svg.releasePointerCapture(e.pointerId);
+  }
+});
+
+
 
 export function setPieceIdCounter(newValue) {
   pieceIdCounter = newValue;
@@ -67,7 +144,7 @@ function deleteActivePiece() {
   console.log(activePiece);
   if (activePiece) {
     allPieces = allPieces.filter(p => p !== activePiece);
-    svg.removeChild(activePiece);
+    viewport.removeChild(activePiece);
     activePiece = undefined;
   }
 }
@@ -149,39 +226,59 @@ const snapDistance = 10;  // Distance to snap pieces to each other
 
 function drawGrid() {
   const gridGroup = svg.querySelector('.grid');
-  const height = svg.height.baseVal.value;
-  const width = svg.width.baseVal.value;
-  const cols = Math.ceil(width / gridSize);
-  const rows = Math.ceil(height / gridSize);
+  if (!gridGroup) return;
 
-  // Clear existing grid lines
-  while (gridGroup.firstChild) {
-    gridGroup.removeChild(gridGroup.firstChild);
-  }
+  gridGroup.innerHTML = ''; // Clear old grid lines
 
-  const ns = 'http://www.w3.org/2000/svg';
+  const transform = viewport.getCTM();
+  if (!transform) return;
 
-  for (let i = 0; i <= cols; i++) {
-    const x = i * gridSize;
-    const line = document.createElementNS(ns, 'line');
+  const inverseTransform = transform.inverse();
+
+  const svgRect = svg.getBoundingClientRect();
+
+  // Four corners of the viewport in screen coordinates
+  const topLeft = svg.createSVGPoint();
+  const bottomRight = svg.createSVGPoint();
+  topLeft.x = 0;
+  topLeft.y = 0;
+  bottomRight.x = svgRect.width;
+  bottomRight.y = svgRect.height;
+
+  // Convert screen points to SVG space
+  const svgTopLeft = topLeft.matrixTransform(inverseTransform);
+  const svgBottomRight = bottomRight.matrixTransform(inverseTransform);
+
+  // Get min/max extents
+  const minX = Math.floor(svgTopLeft.x / gridSize) * gridSize;
+  const minY = Math.floor(svgTopLeft.y / gridSize) * gridSize;
+  const maxX = Math.ceil(svgBottomRight.x / gridSize) * gridSize;
+  const maxY = Math.ceil(svgBottomRight.y / gridSize) * gridSize;
+
+  // Draw vertical lines
+  for (let x = minX; x <= maxX; x += gridSize) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', x);
-    line.setAttribute('y1', 0);
+    line.setAttribute('y1', minY);
     line.setAttribute('x2', x);
-    line.setAttribute('y2', height);
+    line.setAttribute('y2', maxY);
+    line.setAttribute('stroke', '#eee');
+    line.setAttribute('stroke-width', 1);
     gridGroup.appendChild(line);
   }
 
-  for (let j = 0; j <= rows; j++) {
-    const y = j * gridSize;
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', 0);
+  // Draw horizontal lines
+  for (let y = minY; y <= maxY; y += gridSize) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', minX);
     line.setAttribute('y1', y);
-    line.setAttribute('x2', width);
+    line.setAttribute('x2', maxX);
     line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#eee');
+    line.setAttribute('stroke-width', 1);
     gridGroup.appendChild(line);
   }
 }
-
 
 
 
@@ -190,13 +287,17 @@ function drawGrid() {
 export let allPieces = [];
 
 function getTransformedEndpoint(g, point) {
-  //console.log(g, point);
   const svgPoint = svg.createSVGPoint();
   svgPoint.x = point.x;
   svgPoint.y = point.y;
-  const ctm = g.getCTM();
-  //console.log(ctm);
-  return svgPoint.matrixTransform(ctm);
+
+  // Get global (screen-space) position of the point
+  const localCTM = g.getCTM();
+  const global = svgPoint.matrixTransform(localCTM);
+
+  // Convert to world coordinates in viewport space
+  const world = global.matrixTransform(viewport.getScreenCTM().inverse());
+  return world;
 }
 
 // Function to find the closest endpoint
@@ -289,7 +390,7 @@ document.addEventListener('pointerdown', (e) => {
     const type = icon.dataset.type;
     let newPiece = createPiece(type, e.clientX, e.clientY);
     dragTarget = newPiece;
-    svg.appendChild(dragTarget); // <--- make sure it's added to the SVG!
+    //viewport.appendChild(dragTarget); // <--- make sure it's added to the SVG!
     if (activePiece) {
       changePieceColour(activePiece, "black");
     }
@@ -320,7 +421,7 @@ document.addEventListener('pointerdown', (e) => {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const cursorpt = pt.matrixTransform(viewport.getScreenCTM().inverse());
     offset.x = cursorpt.x - getTranslate(dragTarget).x;
     offset.y = cursorpt.y - getTranslate(dragTarget).y;
   }
@@ -350,7 +451,7 @@ document.addEventListener('pointermove', (e) => {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const cursorpt = pt.matrixTransform(viewport.getScreenCTM().inverse());
     //dragTarget.setAttribute('transform', `translate(${cursorpt.x}, ${cursorpt.y})`);
     
     //Store current position
@@ -365,7 +466,7 @@ document.addEventListener('pointerup', (e) => {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const cursorpt = pt.matrixTransform(viewport.getScreenCTM().inverse());
 
     
     const snappedX = Math.round((cursorpt.x - offset.x) / gridSize) * gridSize;
@@ -405,7 +506,7 @@ export function createPiece(type, x, y) {
   const pt = svg.createSVGPoint();
   pt.x = x;
   pt.y = y;
-  const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const cursorpt = pt.matrixTransform(viewport.getScreenCTM().inverse());
 
   const g = document.createElementNS("http://www.w3.org/2000/svg", 'g');
   g.classList.add('track-piece');
@@ -521,7 +622,7 @@ export function createPiece(type, x, y) {
 
   //console.log(g.connections);
   
-  svg.appendChild(g);
+  viewport.appendChild(g);
   allPieces.push(g);
   
   return g;
