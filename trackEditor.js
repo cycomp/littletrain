@@ -80,10 +80,8 @@ console.log(trackButton);
 
 // Toggle the type menu when clicking the track button
 trackButton.addEventListener('pointerdown', (e) => {
-  console.log("hello");
   e.stopPropagation();
   const isHidden = trackTypeMenu.classList.toggle("show");
-  console.log(isHidden);
   pieceMenu.classList.remove("show"); // always hide piece menu on main toggle
 });
 
@@ -267,17 +265,17 @@ function rotatePiece(piece, rotation) {
 
   
 export function updateTransform(target) {
-  console.log(target);
-  const transform = target.getAttribute('transform');
-  const match = transform.match(/translate\(([^)]+)\)/);
-  if (!match) return;
+  //console.log(target);
+  //const transform = target.getAttribute('transform');
+  //const match = transform.match(/translate\(([^)]+)\)/);
+  //if (!match) return;
 
   const x = target.x || 0;
   const y = target.y || 0;
   const rotation = target.rotation || 0;
 
   target.setAttribute('transform', `translate(${x}, ${y}) rotate(${rotation})`);
-  console.log(target);
+  //console.log(target);
 }
 
 let activePiece;
@@ -323,8 +321,21 @@ document.addEventListener('pointerdown', (e) => {
     pt.x = e.clientX;
     pt.y = e.clientY;
     const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    offset.x = cursorpt.x - getTranslate(dragTarget).x;
+    offset.y = cursorpt.y - getTranslate(dragTarget).y;
   }
 });
+
+
+function getTranslate(piece) {
+  const transform = piece.getAttribute('transform');
+  if (!transform) {
+    onsole.error("piece does not have a translation");
+    return { x: 0, y: 0 };
+  } 
+  const match = /translate\(([^,]+),([^)]+)\)/.exec(transform);
+  return {x: parseFloat(match[1]), y: parseFloat(match[2])};
+}
 
 function changePieceColour(piece, colourString) {
   const descendants = piece.querySelectorAll('*');
@@ -343,8 +354,8 @@ document.addEventListener('pointermove', (e) => {
     //dragTarget.setAttribute('transform', `translate(${cursorpt.x}, ${cursorpt.y})`);
     
     //Store current position
-    dragTarget.x = cursorpt.x;
-    dragTarget.y = cursorpt.y;
+    dragTarget.x = cursorpt.x - offset.x;
+    dragTarget.y = cursorpt.y - offset.y;
     updateTransform(dragTarget);
   }
 });
@@ -357,8 +368,9 @@ document.addEventListener('pointerup', (e) => {
     const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
 
     
-    const snappedX = Math.round(cursorpt.x / gridSize) * gridSize;
-    const snappedY = Math.round(cursorpt.y / gridSize) * gridSize;
+    const snappedX = Math.round((cursorpt.x - offset.x) / gridSize) * gridSize;
+    const snappedY = Math.round((cursorpt.y - offset.y) / gridSize) * gridSize;
+
     
     // Get closest endpoint to snap to
     const snap = getClosestEndpoint(dragTarget);
