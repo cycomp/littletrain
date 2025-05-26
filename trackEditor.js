@@ -356,14 +356,6 @@ document.addEventListener('pointerup', (e) => {
     pt.y = e.clientY;
     const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
 
-    /* Check if dropped over the bin
-    if (isOverBin(cursorpt.x, cursorpt.y)) {
-      svg.removeChild(dragTarget);
-      allPieces = allPieces.filter(p => p !== dragTarget);
-      dragTarget = null;
-      return;
-    }
-*/
     
     const snappedX = Math.round(cursorpt.x / gridSize) * gridSize;
     const snappedY = Math.round(cursorpt.y / gridSize) * gridSize;
