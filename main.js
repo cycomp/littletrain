@@ -443,6 +443,24 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
       const x2 = parseFloat(element.getAttribute('x2'));
       const y2 = parseFloat(element.getAttribute('y2'));
 
+      if (
+        approxEqual(targetEndpoints.x1, x1) &&
+        approxEqual(targetEndpoints.y1, y1) &&
+        approxEqual(targetEndpoints.x2, x2) &&
+        approxEqual(targetEndpoints.y2, y2)
+      ) {
+        return element;
+      }
+
+      if (
+        approxEqual(targetEndpoints.x1, x2) &&
+        approxEqual(targetEndpoints.y1, y2) &&
+        approxEqual(targetEndpoints.x2, x1) &&
+        approxEqual(targetEndpoints.y2, y1)
+      ) {
+        return element;
+      }     
+      /*
       if ( targetEndpoints.x1 === x1 &&
            targetEndpoints.y1 === y1 &&
            targetEndpoints.x2 === x2 &&
@@ -455,6 +473,7 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
            targetEndpoints.y2 === y1      ) {
           return element;
         }
+      */
     } 
     
     if (tag === "path") {
@@ -463,6 +482,28 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
       const startPoint = element.getPointAtLength(0);
       const endPoint = element.getPointAtLength(length);
       //console.log(startPoint, endPoint);
+      
+      if (
+        approxEqual(targetEndpoints.x1, startPoint.x) &&
+        approxEqual(targetEndpoints.y1, startPoint.y) &&
+        approxEqual(targetEndpoints.x2, endPoint.x) &&
+        approxEqual(targetEndpoints.y2, endPoint.y)
+      ) {
+        element.flipped = false;
+        return element;
+      }
+
+      if (
+        approxEqual(targetEndpoints.x1, endPoint.x) &&
+        approxEqual(targetEndpoints.y1, endPoint.y) &&
+        approxEqual(targetEndpoints.x2, startPoint.x) &&
+        approxEqual(targetEndpoints.y2, startPoint.y)
+      ) {
+        element.flipped = true;
+        return element;
+      }
+      
+      /*
 
       if ( targetEndpoints.x1 === startPoint.x &&
            targetEndpoints.y1 === startPoint.y &&
@@ -481,6 +522,8 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
           element.flipped = true;
           return element;
       }
+
+      */
     }
   }
 }
@@ -523,6 +566,10 @@ function getElementLengthUnified(element) {
     return Math.hypot(x2 - x1, y2 - y1); // manual length for lines    
   }
   throw new Error("Unsupported SVG element type for getElementLengthUnified");
+}
+
+function approxEqual(a, b, tolerance = 0.1) {
+  return Math.abs(a - b) < tolerance;
 }
 
 
@@ -1042,5 +1089,3 @@ function convertPiecesToPath(pieces, scene) {
 
   return trainEngine;
 }
-
-  
