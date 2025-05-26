@@ -334,7 +334,7 @@ function changePieceColour(piece, colourString) {
   });
 }
 
-svg.addEventListener('pointermove', (e) => {
+document.addEventListener('pointermove', (e) => {
   if(dragTarget) {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
@@ -349,7 +349,7 @@ svg.addEventListener('pointermove', (e) => {
   }
 });
 
-svg.addEventListener('pointerup', (e) => {
+document.addEventListener('pointerup', (e) => {
   if (dragTarget) {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
@@ -390,30 +390,6 @@ svg.addEventListener('pointerup', (e) => {
     dragTarget = null;
   }
 });
-
-function isOverBin(x, y) {
-  const bin = document.getElementById('bin');
-  const binBox = bin.getBBox();
-  const binCTM = bin.getCTM();
-
-  // Convert all four corners of the bin bounding box to global coordinates
-  const topLeft = svg.createSVGPoint();
-  topLeft.x = binBox.x;
-  topLeft.y = binBox.y;
-  const worldTopLeft = topLeft.matrixTransform(binCTM);
-
-  const bottomRight = svg.createSVGPoint();
-  bottomRight.x = binBox.x + binBox.width;
-  bottomRight.y = binBox.y + binBox.height;
-  const worldBottomRight = bottomRight.matrixTransform(binCTM);
-
-  return (
-    x >= worldTopLeft.x &&
-    x <= worldBottomRight.x &&
-    y >= worldTopLeft.y &&
-    y <= worldBottomRight.y
-  );
-}
 
 
 export let pieceIdCounter = 0;
