@@ -229,6 +229,7 @@ function findMatchingEndpoint(point, thisPiece, allPieces) {
   return matches.length === 1 ? matches[0] : null;;
 }
 
+
 function getTransformedEndpoint(g, point) {
   const svg = document.getElementById('editor');
   //console.log(g, point);
@@ -325,9 +326,9 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
   const allPaths = [];
   const visitedEdges = new Set();
   const layoutBoundingBox = {};
-  layoutBoundingBox.maxX = 0;
+  layoutBoundingBox.maxX = -Infinity;
   layoutBoundingBox.minX = Infinity;
-  layoutBoundingBox.maxY = 0;
+  layoutBoundingBox.maxY = -Infinity;
   layoutBoundingBox.minY = Infinity;
   
 
@@ -354,11 +355,6 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
         const segmentPoints = []
 
         if (startPiece === endPiece) {
-          const pieceBoundingBox = {};
-          pieceBoundingBox.maxX = 0;
-          pieceBoundingBox.minX = Infinity;
-          pieceBoundingBox.maxY = 0;
-          pieceBoundingBox.minY = Infinity;
           const elements = startPiece.querySelectorAll("line, path");
           let element = findMatchingElementFromEndpoints(elements, startPiece.endpoints, startPoint, endPoint)  
 
@@ -368,10 +364,12 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
           for (let i=0; i<length; i++) {
             let point = getPointAtLengthUnified(element, i)
             let worldPoint = getTransformedEndpoint(startPiece, point)
+            console.log(layoutBoundingBox, worldPoint);
             if (worldPoint.x > layoutBoundingBox.maxX) { layoutBoundingBox.maxX = worldPoint.x};
             if (worldPoint.x < layoutBoundingBox.minX) { layoutBoundingBox.minX = worldPoint.x};
             if (worldPoint.y > layoutBoundingBox.maxY) { layoutBoundingBox.maxY = worldPoint.y};
-            if (worldPoint.y < layoutBoundingBox.minY) { layoutBoundingBox.minY = worldPoint.y};            
+            if (worldPoint.y < layoutBoundingBox.minY) { layoutBoundingBox.minY = worldPoint.y};
+            console.log(layoutBoundingBox);
             segmentPoints.push(worldPoint);
           }
 
