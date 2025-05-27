@@ -229,9 +229,6 @@ function findMatchingEndpoint(point, thisPiece, allPieces) {
   return matches.length === 1 ? matches[0] : null;;
 }
 
-  const viewport = document.getElementById('viewport')
-  const transform = viewport.transform.baseVal.consolidate()?.matrix;
-
 
 function getTransformedEndpoint(g, point) {
   const svg = document.getElementById('editor');
