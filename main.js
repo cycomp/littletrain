@@ -1,10 +1,5 @@
-import { allPieces, point1, point2, point3 } from "./trackEditor.js"
+import { allPieces, point1, point2, point3, resetView } from "./trackEditor.js"
 import { showToast } from "./saveLoadLayouts.js"
-
-//window.addEventListener('resize', function () {
-//  engine.resize();
-//});
-
 
 let babylonState = null;
 
@@ -15,10 +10,6 @@ function createScene(canvas, engine) {
   const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.8;
 
-  // Ground (optional)
-  ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, scene);
-  ground.position.y = -0.01;
-
   return scene;
 };
 
@@ -26,6 +17,19 @@ function open3dView(canvas) {
   console.log("opening 3d view");
   const engine = new BABYLON.Engine(canvas, true);
   const scene = createScene(canvas, engine);
+  resetView();
+  
+  GLOBALS.speed = 0;
+  GLOBALS.directionSign = 1;
+  GLOBALS.lastDirectionSign = GLOBALS.directionSign; // Tracks previous direction (for detecting reversals)
+  GLOBALS.THRESHOLD = 2;
+
+  // Constants for wheel rotation
+  const wheelDiameter = 3;  // Diameter of the wheel
+  GLOBALS.wheelCircumference = Math.PI * wheelDiameter;  // Circumference = π * diameter
+
+
+  console.log(GLOBALS.speed);
   
   //Begin to display the track
   let trainEngine = convertPiecesToPath(allPieces, scene);
@@ -61,20 +65,17 @@ function open3dView(canvas) {
   };
 }
 
+let GLOBALS = {};
 
 //End at: (40 * cos(45°), 40 * sin(45°)) ≈ (28.28, 28.28)
 
-let followCamera;
-let arcCamera;
-
-let layoutSize;
 
 function setUpCameras(scene, trainEngine, canvas) {
-  followCamera = createFollowCamera(scene, trainEngine, canvas);
-  arcCamera = createArcRotateCamera(scene, canvas);
+  GLOBALS.followCamera = createFollowCamera(scene, trainEngine, canvas);
+  GLOBALS.arcCamera = createArcRotateCamera(scene, canvas);
 
-  scene.activeCamera = arcCamera;
-  arcCamera.attachControl(canvas, true);
+  scene.activeCamera = GLOBALS.arcCamera;
+  GLOBALS.arcCamera.attachControl(canvas, true);
 }
 
 document.getElementById("switchCameras").addEventListener("pointerdown", toggleCameras);
@@ -87,13 +88,13 @@ function toggleCameras() {
 
   current.detachControl(canvas);
 
-  if (current === followCamera) {
-    scene.activeCamera = arcCamera;
-    arcCamera.attachControl(canvas, true);
+  if (current === GLOBALS.followCamera) {
+    scene.activeCamera = GLOBALS.arcCamera;
+    GLOBALS.arcCamera.attachControl(canvas, true);
   } else {
-    resetFollowCameraPosition(followCamera)
-    scene.activeCamera = followCamera;
-    followCamera.attachControl(canvas, true);
+    resetFollowCameraPosition(GLOBALS.followCamera)
+    scene.activeCamera = GLOBALS.followCamera;
+    GLOBALS.followCamera.attachControl(canvas, true);
   }
   
 }
@@ -132,7 +133,7 @@ function createArcRotateCamera(scene, canvas) {
 
 
     const target = new BABYLON.Vector3(0, 0, 0);
-    const radius = layoutSize * 1.5; // Automatically fits layout
+    const radius = GLOBALS.layoutSize * 1.5; // Automatically fits layout
   
     const camera = new BABYLON.ArcRotateCamera("ArcCam", alpha, beta, radius, target.position, scene);
 
@@ -154,11 +155,6 @@ function createArcRotateCamera(scene, canvas) {
 }
 
 
-//let camera;
-
-
-//const canvas = document.getElementById('renderCanvas');
-let ground;
 
 
 
@@ -176,6 +172,8 @@ function openEditor() {
     window.removeEventListener("resize", onResizeHandler);
   
     babylonState = null;
+    GLOBALS = {};
+    console.log("shouldn't be any state left");
   }
   
   //hide track editor and display simulationView
@@ -197,7 +195,6 @@ function handleRenderButtonClick() {
   open3dView(canvas)
 }
 
-const THRESHOLD = 2;
 
 function findMatchingEndpoint(point, thisPiece, allPieces) {
   let matchingEndpoint = null;
@@ -214,7 +211,7 @@ function findMatchingEndpoint(point, thisPiece, allPieces) {
     for (let i=0; i<testPieceWorldEndpoints.length; i++) {
       let otherPt = testPieceWorldEndpoints[i];
       const dist = Math.hypot(worldPoint.x - otherPt.x, worldPoint.y - otherPt.y);
-      if (dist < THRESHOLD) {
+      if (dist < GLOBALS.THRESHOLD) {
         matchingEndpoint = {
           piece: piece,
           endpointIndex: i
@@ -460,20 +457,6 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
       ) {
         return element;
       }     
-      /*
-      if ( targetEndpoints.x1 === x1 &&
-           targetEndpoints.y1 === y1 &&
-           targetEndpoints.x2 === x2 &&
-           targetEndpoints.y2 === y2      ) {
-          return element;
-      }
-      if ( targetEndpoints.x1 === x2 &&
-           targetEndpoints.y1 === y2 &&
-           targetEndpoints.x2 === x1 &&
-           targetEndpoints.y2 === y1      ) {
-          return element;
-        }
-      */
     } 
     
     if (tag === "path") {
@@ -502,28 +485,6 @@ function findMatchingElementFromEndpoints(elements, endpoints, startPoint, endPo
         element.flipped = true;
         return element;
       }
-      
-      /*
-
-      if ( targetEndpoints.x1 === startPoint.x &&
-           targetEndpoints.y1 === startPoint.y &&
-           targetEndpoints.x2 === endPoint.x &&
-           targetEndpoints.y2 === endPoint.y      ) {
-    
-          element.flipped = false;
-          return element;
-        }
-      
-      if   (targetEndpoints.x1 === endPoint.x &&
-           targetEndpoints.y1 === endPoint.y &&
-           targetEndpoints.x2 === startPoint.x &&
-           targetEndpoints.y2 === startPoint.y      ) {
-    
-          element.flipped = true;
-          return element;
-      }
-
-      */
     }
   }
 }
@@ -639,7 +600,7 @@ function displayTrack(layoutBoundingBox, scene) {
   //scene.debugLayer.show();
 
   // After setting up the scene and camera
-  layoutSize = Math.max(width, height);
+  GLOBALS.layoutSize = Math.max(width, height);
 
 }
 
@@ -705,8 +666,8 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
 
 
 
-function findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGraph, directionSign) {
-  if (lastDirectionSign !== directionSign) {
+function findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGraph) {
+  if (GLOBALS.lastDirectionSign !== GLOBALS.directionSign) {
     let temp = currentEndpointKey;
     currentEndpointKey = previousEndpointKey;
     previousEndpointKey = temp;
@@ -777,7 +738,7 @@ function getSegmentForTraversal(piece, fromIndex, toIndex) {
   let fromKey = getKey(piece, fromIndex);
   let toKey = getKey(piece, toIndex);
   let edgeKey;
-  if (directionSign > 0) {
+  if (GLOBALS.directionSign > 0) {
       edgeKey = getEdgeKey(fromKey, toKey);
   } else {
       edgeKey = getEdgeKey(toKey, fromKey);
@@ -789,10 +750,6 @@ function getSegmentForTraversal(piece, fromIndex, toIndex) {
 
   return segment;
 }
-
-let speed = 0;
-let directionSign = 1;
-let lastDirectionSign = directionSign; // Tracks previous direction (for detecting reversals)
 
 document.addEventListener('keydown', (event) => {
   if (event.key === '+' || event.key === '=') { // "+" shares the "=" key on many layouts
@@ -812,9 +769,9 @@ document.getElementById("decreaseSpeed").addEventListener("pointerdown", () => {
 
 
 function adjustSpeed(change) {
-  speed = Math.round(Math.max(-2, Math.min(speed + change, 2)) * 10) / 10;
-  directionSign = Math.sign(speed);
-  console.log(speed);
+  GLOBALS.speed = Math.round(Math.max(-2, Math.min(GLOBALS.speed + change, 2)) * 10) / 10;
+  GLOBALS.directionSign = Math.sign(GLOBALS.speed);
+  console.log(GLOBALS.speed);
 }
 
  
@@ -911,7 +868,7 @@ function startTrain(startKey, connectionsGraph, scene) {
 
   let pointIndex = 0;
   let travelProgress = 0;
-  let initialDirection = directionSign;
+  let initialDirection = GLOBALS.directionSign;
   
   placeEngineAtStart(engine, segment[0], segment[1], initialDirection, engineElevation);
   
@@ -920,23 +877,23 @@ function startTrain(startKey, connectionsGraph, scene) {
   const engineHistory = [];
   const maxHistory = 1000; // adjust if needed
 
-  let previousDirectionSign = Math.sign(speed); // Track the previous direction
+  let previousDirectionSign = Math.sign(GLOBALS.speed); // Track the previous direction
   
   scene.onBeforeRenderObservable.add(() => {
-    const directionSign = Math.sign(speed); // +1 for forward, -1 for backward
-    if (directionSign === 0) {
+    //const GLOBALS.directionSign = Math.sign(GLOBALS.speed); // +1 for forward, -1 for backward
+    if (GLOBALS.directionSign === 0) {
       return; // No movement if speed is zero
     }
   
     if (!segment || 
-        (directionSign > 0 && pointIndex >= segment.length - 1) || 
-        (directionSign < 0 && pointIndex <= 0)) {
+        (GLOBALS.directionSign > 0 && pointIndex >= segment.length - 1) || 
+        (GLOBALS.directionSign < 0 && pointIndex <= 0)) {
       
-      const nextEndpointKey = findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGraph, directionSign);
+      const nextEndpointKey = findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGraph);
       if (!nextEndpointKey) {
         console.log("Dead End");
-        if (speed !== 0) {
-          speed = 0;
+        if (GLOBALS.speed !== 0) {
+          GLOBALS.speed = 0;
         }
         return;
       } 
@@ -946,8 +903,8 @@ function startTrain(startKey, connectionsGraph, scene) {
       currentPieceId = parseKey(currentEndpointKey).pieceId;
   
       if (nextPieceId !== currentPieceId) {
-        if (lastDirectionSign !== directionSign) {
-          lastDirectionSign = directionSign;
+        if (GLOBALS.lastDirectionSign !== GLOBALS.directionSign) {
+          GLOBALS.lastDirectionSign = GLOBALS.directionSign;
         } else {
           previousEndpointKey = currentEndpointKey;
         }
@@ -966,19 +923,19 @@ function startTrain(startKey, connectionsGraph, scene) {
       segment = getSegmentForTraversal(currentPiece, fromIndex, toIndex);
       if (!segment) return;
   
-      pointIndex = directionSign >= 0 ? 0 : segment.length - 2;
+      pointIndex = GLOBALS.directionSign >= 0 ? 0 : segment.length - 2;
       travelProgress = 0;
     }
   
   
-    if (directionSign !== previousDirectionSign && previousDirectionSign !== 0) {
+    if (GLOBALS.directionSign !== previousDirectionSign && previousDirectionSign !== 0) {
       // We're about to move in the opposite direction along the same segment
       const fromPoint = segment[pointIndex];
       const toPoint = segment[pointIndex + previousDirectionSign];
       console.log(segment, pointIndex, previousDirectionSign);
       if (toPoint === undefined) {
         travelProgress = 0;
-        previousDirectionSign = directionSign;
+        previousDirectionSign = GLOBALS.directionSign;
         return;
       }
       const segmentLength = toPoint.subtract(fromPoint).length();
@@ -988,21 +945,21 @@ function startTrain(startKey, connectionsGraph, scene) {
       // Adjust index so the forward/backward step happens from the same segment
       pointIndex += previousDirectionSign; // move to the same pair of points but from the other side
     }
-    previousDirectionSign = directionSign;
+    previousDirectionSign = GLOBALS.directionSign;
   
     let previousProgress = travelProgress;
-    travelProgress += Math.abs(speed);
+    travelProgress += Math.abs(GLOBALS.speed);
     let deltaDistance = travelProgress - previousProgress;
   
     
   
     // Advance through segment points in the appropriate direction
     while (
-      (directionSign > 0 && pointIndex < segment.length - 1) ||
-      (directionSign < 0 && pointIndex > 0)
+      (GLOBALS.directionSign > 0 && pointIndex < segment.length - 1) ||
+      (GLOBALS.directionSign < 0 && pointIndex > 0)
     ) {
       const currentPoint = segment[pointIndex];
-      nextPoint = segment[pointIndex + directionSign];
+      nextPoint = segment[pointIndex + GLOBALS.directionSign];
       //console.log(nextPoint);
       const moveVector = nextPoint.subtract(currentPoint);
       const segmentLength = moveVector.length();
@@ -1020,7 +977,7 @@ function startTrain(startKey, connectionsGraph, scene) {
   
         engine.position = new BABYLON.Vector3(position.x, engineElevation, position.z);
         let forwardVector;
-        if (directionSign > 0) {
+        if (GLOBALS.directionSign > 0) {
           forwardVector = nextPoint.subtract(currentPoint);
         } else {
           forwardVector = currentPoint.subtract(nextPoint);
@@ -1034,23 +991,20 @@ function startTrain(startKey, connectionsGraph, scene) {
       }
   
       travelProgress -= segmentLength;
-      pointIndex += directionSign;
+      pointIndex += GLOBALS.directionSign;
     }
   });
 
   return engine;
 }
 
-// Constants for wheel rotation
-const wheelDiameter = 3;  // Diameter of the wheel
-const wheelCircumference = Math.PI * wheelDiameter;  // Circumference = π * diameter
 
 // Function to update wheel rotations
 function updateWheelRotation(wheelMeshes, travelDistance) {
   //console.log(travelDistance);
   // Calculate how much the wheel should rotate based on the travel distance
-  let rotationAmount = travelDistance / wheelCircumference * 2 * Math.PI;  // Full 360 degrees for one revolution
-  if (directionSign > 0) {
+  let rotationAmount = travelDistance / GLOBALS.wheelCircumference * 2 * Math.PI;  // Full 360 degrees for one revolution
+  if (GLOBALS.directionSign > 0) {
     rotationAmount = -rotationAmount;
   }
   // Apply the calculated rotation to each wheel in local space
@@ -1089,3 +1043,5 @@ function convertPiecesToPath(pieces, scene) {
 
   return trainEngine;
 }
+
+  
