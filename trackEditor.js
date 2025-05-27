@@ -8,6 +8,16 @@ let viewState = {
   y: 0
 };
 
+export function resetView() {
+  viewState.x = 0;
+  viewState.y = 0;
+  viewState.scale = 1;
+
+  updateViewTransform(); // apply to the SVG
+  drawGrid();            // redraw the grid to match
+}
+
+
 function updateViewTransform() {
   viewport.setAttribute(
     "transform",
@@ -15,18 +25,10 @@ function updateViewTransform() {
   );
 }
 
-const minScale = 0.2;
+const minScale = 0.4;
 const maxScale = 4;
 
-svg.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  const zoomFactor = 1.1;
-  const mouse = svg.createSVGPoint();
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
-  const cursor = mouse.matrixTransform(svg.getScreenCTM().inverse());
-
-  const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+export function setScale(cursor, scaleDelta) {
   const proposedScale = viewState.scale * scaleDelta;
 
   
@@ -43,6 +45,18 @@ svg.addEventListener("wheel", (e) => {
   
   updateViewTransform();
   drawGrid();
+}
+
+svg.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const zoomFactor = 1.1;
+  const mouse = svg.createSVGPoint();
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  const cursor = mouse.matrixTransform(svg.getScreenCTM().inverse());
+
+  const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+  setScale(cursor, scaleDelta);
 }, { passive: false });
 
 
@@ -87,10 +101,10 @@ function resizeSVG() {
   svg.setAttribute('height', window.innerHeight);
   svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
   drawGrid();
-  const bin = document.getElementById('bin');
-  let x = window.innerWidth - 50;
-  let y = window.innerHeight - 50;
-  bin.setAttribute('transform', `translate(${x}, ${y})`);
+  //const bin = document.getElementById('bin');
+  //let x = window.innerWidth - 50;
+  //let y = window.innerHeight - 50;
+  //bin.setAttribute('transform', `translate(${x}, ${y})`);
 }
 
 window.addEventListener('resize', resizeSVG);
