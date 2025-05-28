@@ -4,7 +4,13 @@ html, body {
       height: 100%;
       font-family: system-ui, sans-serif;
       overflow: hidden;
-    }
+      touch-action: none;
+      overscroll-behavior: none;
+}
+
+svg {
+  touch-action: none;
+}
 
     .full-screen {
       position: fixed;
