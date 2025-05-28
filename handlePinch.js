@@ -1,6 +1,6 @@
 import { setScale } from "./trackEditor.js"
 
-const pointers = new Map();
+export const pointers = new Map();
 let pinchPrevCenter = null;
 let pinchPrevDistance = null;
 const svg = document.getElementById('editor');
@@ -66,3 +66,6 @@ svg.addEventListener("pointermove", (e) => {
     pinchPrevDistance = currDistance;
   }
 });
+
+
+
