@@ -1,74 +1,92 @@
 import { setScale } from "./trackEditor.js"
+const svg = document.getElementById('editor');
 
 export const pointers = new Map();
-let pinchPrevCenter = null;
-let pinchPrevDistance = null;
-const svg = document.getElementById('editor');
+
+
+let pinch = {
+  active: false,
+  id1: null,
+  id2: null,
+  prevDistance: null,
+  prevCenterSVG: null
+};
 
 svg.addEventListener("pointerdown", (e) => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   svg.setPointerCapture(e.pointerId);
+
+  if (pointers.size === 2 && !pinch.active) {
+    // Start pinch gesture
+    const ids = Array.from(pointers.keys());
+    pinch.id1 = ids[0];
+    pinch.id2 = ids[1];
+    pinch.active = true;
+
+    const p1 = pointers.get(pinch.id1);
+    const p2 = pointers.get(pinch.id2);
+    const center = {
+      x: (p1.x + p2.x) / 2,
+      y: (p1.y + p2.y) / 2
+    };
+
+    const pt = svg.createSVGPoint();
+    pt.x = center.x;
+    pt.y = center.y;
+    const ctm = svg.getScreenCTM();
+    if (ctm) {
+      pinch.prevCenterSVG = pt.matrixTransform(ctm.inverse());
+    }
+
+    pinch.prevDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  }
 });
 
+svg.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId)) return;
+
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pinch.active && pointers.has(pinch.id1) && pointers.has(pinch.id2)) {
+    const p1 = pointers.get(pinch.id1);
+    const p2 = pointers.get(pinch.id2);
+
+    const newDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    const delta = newDistance / pinch.prevDistance;
+
+    // Dead zone to prevent flicker when distance change is tiny
+    if (Math.abs(delta - 1) < 0.005) return;
+
+    setScale(pinch.prevCenterSVG, delta);
+
+    pinch.prevDistance = newDistance;
+  }
+});
 
 svg.addEventListener("pointerup", (e) => {
   pointers.delete(e.pointerId);
   svg.releasePointerCapture(e.pointerId);
 
-  if (pointers.size < 2) {
-    pinchPrevCenter = null;
-    pinchPrevDistance = null;
+  if (e.pointerId === pinch.id1 || e.pointerId === pinch.id2) {
+    pinch = {
+      active: false,
+      id1: null,
+      id2: null,
+      prevDistance: null,
+      prevCenterSVG: null
+    };
   }
 });
-
 
 svg.addEventListener("pointercancel", (e) => {
   pointers.delete(e.pointerId);
-
-  if (pointers.size < 2) {
-    pinchPrevCenter = null;
-    pinchPrevDistance = null;
-  }
-});
-svg.addEventListener("pointermove", (e) => {
-  if (!pointers.has(e.pointerId)) return;
-
-  const pointer = pointers.get(e.pointerId);
-  pointer.x = e.clientX;
-  pointer.y = e.clientY;
-  pointers.set(e.pointerId, pointer);
-
-  if (pointers.size === 2) {
-    const [p1, p2] = Array.from(pointers.values());
-
-    const currCenter = {
-      x: (p1.x + p2.x) / 2,
-      y: (p1.y + p2.y) / 2
+  if (e.pointerId === pinch.id1 || e.pointerId === pinch.id2) {
+    pinch = {
+      active: false,
+      id1: null,
+      id2: null,
+      prevDistance: null,
+      prevCenterSVG: null
     };
-    const currDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-
-    if (pinchPrevCenter && pinchPrevDistance) {
-      const scaleDelta = currDistance / pinchPrevDistance;
-
-      //Don't recompute getScreenCTM after state has changed
-      const svgPt = svg.createSVGPoint();
-      svgPt.x = currCenter.x;
-      svgPt.y = currCenter.y;
-
-      //Lock in the CTM before applying the transform
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return;
-      const cursor = svgPt.matrixTransform(ctm.inverse());
-
-      //Now apply scale with the correct cursor
-      setScale(cursor, scaleDelta);
-    }
-
-    // Update previous values *after* zoom
-    pinchPrevCenter = currCenter;
-    pinchPrevDistance = currDistance;
   }
 });
-
-
-
