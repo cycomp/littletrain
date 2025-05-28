@@ -20,17 +20,14 @@ svg.addEventListener("pointercancel", (e) => {
 svg.addEventListener("pointermove", (e) => {
   if (!pointers.has(e.pointerId)) return;
 
-  const thisPointer = pointers.get(e.pointerId);
-  thisPointer.x = e.clientX;
-  thisPointer.y = e.clientY;
-
-  // Update the map explicitly
-  pointers.set(e.pointerId, thisPointer);
+  const pointer = pointers.get(e.pointerId);
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
+  pointers.set(e.pointerId, pointer);
 
   if (pointers.size === 2) {
-    const entries = Array.from(pointers.entries());
-    const [aId, a] = entries[0];
-    const [bId, b] = entries[1];
+    const [aId, a] = Array.from(pointers.entries())[0];
+    const [bId, b] = Array.from(pointers.entries())[1];
 
     if (!a.prev || !b.prev) {
       a.prev = { x: a.x, y: a.y };
@@ -42,7 +39,11 @@ svg.addEventListener("pointermove", (e) => {
 
     const prevDist = Math.hypot(a.prev.x - b.prev.x, a.prev.y - b.prev.y);
     const currDist = Math.hypot(a.x - b.x, a.y - b.y);
-    const scaleDelta = currDist / prevDist;
+
+    if (prevDist < 10 || currDist < 10) return;
+
+    const rawScaleDelta = currDist / prevDist;
+    const scaleDelta = Math.max(0.9, Math.min(1.1, rawScaleDelta)); // smoother zoom
 
     const centerX = (a.x + b.x) / 2;
     const centerY = (a.y + b.y) / 2;
@@ -50,7 +51,10 @@ svg.addEventListener("pointermove", (e) => {
     const cursor = svg.createSVGPoint();
     cursor.x = centerX;
     cursor.y = centerY;
-    const svgPt = cursor.matrixTransform(svg.getScreenCTM().inverse());
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const svgPt = cursor.matrixTransform(ctm.inverse());
+
     setScale(svgPt, scaleDelta);
 
     a.prev = { x: a.x, y: a.y };
