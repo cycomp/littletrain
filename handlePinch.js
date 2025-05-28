@@ -1,6 +1,8 @@
 import { setScale } from "./trackEditor.js"
-  
+
 const pointers = new Map();
+let pinchPrevCenter = null;
+let pinchPrevDistance = null;
 const svg = document.getElementById('editor');
 
 svg.addEventListener("pointerdown", (e) => {
@@ -8,13 +10,25 @@ svg.addEventListener("pointerdown", (e) => {
   svg.setPointerCapture(e.pointerId);
 });
 
+
 svg.addEventListener("pointerup", (e) => {
   pointers.delete(e.pointerId);
   svg.releasePointerCapture(e.pointerId);
+
+  if (pointers.size < 2) {
+    pinchPrevCenter = null;
+    pinchPrevDistance = null;
+  }
 });
+
 
 svg.addEventListener("pointercancel", (e) => {
   pointers.delete(e.pointerId);
+
+  if (pointers.size < 2) {
+    pinchPrevCenter = null;
+    pinchPrevDistance = null;
+  }
 });
 
 svg.addEventListener("pointermove", (e) => {
@@ -26,40 +40,29 @@ svg.addEventListener("pointermove", (e) => {
   pointers.set(e.pointerId, pointer);
 
   if (pointers.size === 2) {
-    const [aId, a] = Array.from(pointers.entries())[0];
-    const [bId, b] = Array.from(pointers.entries())[1];
+    const [p1, p2] = Array.from(pointers.values());
 
-    if (!a.prev || !b.prev) {
-      a.prev = { x: a.x, y: a.y };
-      b.prev = { x: b.x, y: b.y };
-      pointers.set(aId, a);
-      pointers.set(bId, b);
-      return;
+    const currCenter = {
+      x: (p1.x + p2.x) / 2,
+      y: (p1.y + p2.y) / 2
+    };
+    const currDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+
+    if (pinchPrevCenter && pinchPrevDistance) {
+      const scaleDelta = currDistance / pinchPrevDistance;
+
+      const svgPt = svg.createSVGPoint();
+      svgPt.x = currCenter.x;
+      svgPt.y = currCenter.y;
+
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+
+      const svgCoord = svgPt.matrixTransform(ctm.inverse());
+      setScale(svgCoord, scaleDelta);
     }
 
-    const prevDist = Math.hypot(a.prev.x - b.prev.x, a.prev.y - b.prev.y);
-    const currDist = Math.hypot(a.x - b.x, a.y - b.y);
-
-    if (prevDist < 10 || currDist < 10) return;
-
-    const rawScaleDelta = currDist / prevDist;
-    const scaleDelta = Math.max(0.9, Math.min(1.1, rawScaleDelta)); // smoother zoom
-
-    const centerX = (a.x + b.x) / 2;
-    const centerY = (a.y + b.y) / 2;
-
-    const cursor = svg.createSVGPoint();
-    cursor.x = centerX;
-    cursor.y = centerY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const svgPt = cursor.matrixTransform(ctm.inverse());
-
-    setScale(svgPt, scaleDelta);
-
-    a.prev = { x: a.x, y: a.y };
-    b.prev = { x: b.x, y: b.y };
-    pointers.set(aId, a);
-    pointers.set(bId, b);
+    pinchPrevCenter = currCenter;
+    pinchPrevDistance = currDistance;
   }
 });
