@@ -30,7 +30,6 @@ svg.addEventListener("pointercancel", (e) => {
     pinchPrevDistance = null;
   }
 });
-
 svg.addEventListener("pointermove", (e) => {
   if (!pointers.has(e.pointerId)) return;
 
@@ -51,17 +50,21 @@ svg.addEventListener("pointermove", (e) => {
     if (pinchPrevCenter && pinchPrevDistance) {
       const scaleDelta = currDistance / pinchPrevDistance;
 
+      //Don't recompute getScreenCTM after state has changed
       const svgPt = svg.createSVGPoint();
       svgPt.x = currCenter.x;
       svgPt.y = currCenter.y;
 
+      //Lock in the CTM before applying the transform
       const ctm = svg.getScreenCTM();
       if (!ctm) return;
+      const cursor = svgPt.matrixTransform(ctm.inverse());
 
-      const svgCoord = svgPt.matrixTransform(ctm.inverse());
-      setScale(svgCoord, scaleDelta);
+      //Now apply scale with the correct cursor
+      setScale(cursor, scaleDelta);
     }
 
+    // Update previous values *after* zoom
     pinchPrevCenter = currCenter;
     pinchPrevDistance = currDistance;
   }
