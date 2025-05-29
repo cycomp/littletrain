@@ -71,6 +71,7 @@ svg.addEventListener("wheel", (e) => {
 let isPanning = false;
 let panStart = { x: 0, y: 0 };
 
+
 svg.addEventListener("pointerdown", (e) => {
   debugLog("Zooming "+isZooming);
   if (e.target === svg && isZooming === false) {
@@ -83,13 +84,30 @@ svg.addEventListener("pointerdown", (e) => {
 svg.addEventListener("pointermove", (e) => {
   debugLog("Zooming "+isZooming);
   if (isPanning && isZooming === false) {
-    const dx = e.clientX - panStart.x;
-    const dy = e.clientY - panStart.y;
-    viewState.x += dx / viewState.scale;
-    viewState.y += dy / viewState.scale;
+    // Convert previous screen position to SVG coordinates
+    const startPoint = svg.createSVGPoint();
+    startPoint.x = panStart.x;
+    startPoint.y = panStart.y;
+    const startSVG = startPoint.matrixTransform(svg.getScreenCTM().inverse());
+    
+    // Convert current screen position to SVG coordinates
+    const currentPoint = svg.createSVGPoint();
+    currentPoint.x = e.clientX;
+    currentPoint.y = e.clientY;
+    const currentSVG = currentPoint.matrixTransform(svg.getScreenCTM().inverse());
+    
+    // Subtract in SVG space
+    const dx = currentSVG.x - startSVG.x;
+    const dy = currentSVG.y - startSVG.y;
+    
+    // Apply delta to view state
+    viewState.x += dx;
+    viewState.y += dy;
+    
     panStart = { x: e.clientX, y: e.clientY };
     updateViewTransform();
     drawGrid();
+
   } else {
     isPanning = false;
   }
@@ -289,6 +307,7 @@ function drawGrid() {
     line.setAttribute('y2', maxY);
     line.setAttribute('stroke', '#eee');
     line.setAttribute('stroke-width', 1);
+    line.setAttribute("pointer-events", "none");
     gridGroup.appendChild(line);
   }
 
@@ -301,6 +320,7 @@ function drawGrid() {
     line.setAttribute('y2', y);
     line.setAttribute('stroke', '#eee');
     line.setAttribute('stroke-width', 1);
+    line.setAttribute("pointer-events", "none");
     gridGroup.appendChild(line);
   }
 }
