@@ -1,36 +1,14 @@
-import { setScale } from "./trackEditor.js"
-const svg = document.getElementById('editor');
+import { setScale } from "./trackEditor.js";
 
+const svg = document.getElementById("editor");
 
 let isZooming = false;
-let startTouches = null;
-let startMidpoint = null;
-let startDistance = null;
-
 let pinchPrevCenter = null;
 let pinchPrevDistance = null;
-
-
-
-function getMidpoint(t1, t2) {
-  return {
-    x: (t1.clientX + t2.clientX) / 2,
-    y: (t1.clientY + t2.clientY) / 2
-  };
-}
-
-
-function getDistance(t1, t2) {
-  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-}
-
 
 svg.addEventListener("touchstart", (e) => {
   if (e.touches.length === 2) {
     isZooming = true;
-    startTouches = [e.touches[0], e.touches[1]];
-    startMidpoint = getMidpoint(...startTouches);
-    startDistance = getDistance(...startTouches);
   }
 }, { passive: false });
 
@@ -38,22 +16,43 @@ svg.addEventListener("touchmove", (e) => {
   if (isZooming && e.touches.length === 2) {
     e.preventDefault();
 
-    const currentTouches = [e.touches[0], e.touches[1]];
-    const currentMidpoint = getMidpoint(...currentTouches);
-    const currentDistance = getDistance(...currentTouches);
+    const a = e.touches[0];
+    const b = e.touches[1];
 
-    if (startDistance > 0) {
-      const scaleDelta = currentDistance / startDistance;
-      setScale(currentMidpoint, scaleDelta);
+    const centerClient = {
+      x: (a.clientX + b.clientX) / 2,
+      y: (a.clientY + b.clientY) / 2,
+    };
+
+    const cursor = svg.createSVGPoint();
+    cursor.x = centerClient.x;
+    cursor.y = centerClient.y;
+    const centerSVG = cursor.matrixTransform(svg.getScreenCTM().inverse());
+
+    const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    if (pinchPrevCenter && pinchPrevDistance > 0 && Number.isFinite(pinchPrevDistance)) {
+      const scaleDelta = distance / pinchPrevDistance;
+      if (Number.isFinite(scaleDelta) && scaleDelta !== 1) {
+        setScale(pinchPrevCenter, scaleDelta);
+      }
     }
+
+    pinchPrevCenter = centerSVG;
+    pinchPrevDistance = distance;
   }
 }, { passive: false });
 
 svg.addEventListener("touchend", (e) => {
   if (e.touches.length < 2) {
     isZooming = false;
-    startTouches = null;
-    startDistance = null;
-    startMidpoint = null;
+    pinchPrevCenter = null;
+    pinchPrevDistance = null;
   }
 }, { passive: false });
+
+svg.addEventListener("touchcancel", () => {
+  isZooming = false;
+  pinchPrevCenter = null;
+  pinchPrevDistance = null;
+});
