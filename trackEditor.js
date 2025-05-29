@@ -1,6 +1,3 @@
-import { pointers } from "./handlePinch.js"
-
-  
 const svg = document.getElementById('editor');
 const viewport = document.getElementById("viewport");
 
@@ -67,9 +64,6 @@ let panStart = { x: 0, y: 0 };
 
 svg.addEventListener("pointerdown", (e) => {
   if (e.target === svg) {
-    if (pointers.size > 1) {
-      return;
-    }
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
     svg.setPointerCapture(e.pointerId);
