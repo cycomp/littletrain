@@ -33,7 +33,7 @@ function updateViewTransform() {
 }
 
 const minScale = 0.4;
-const maxScale = 4;
+const maxScale = 8;
 
 export function setScale(cursor, scaleDelta) {
   const proposedScale = viewState.scale * scaleDelta;
