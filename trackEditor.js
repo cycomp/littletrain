@@ -1,3 +1,5 @@
+import { isZooming } from "./handlePinch.js"
+
 const svg = document.getElementById('editor');
 const viewport = document.getElementById("viewport");
 
@@ -68,12 +70,10 @@ svg.addEventListener("wheel", (e) => {
 
 let isPanning = false;
 let panStart = { x: 0, y: 0 };
-let numPointers = 0;
 
 svg.addEventListener("pointerdown", (e) => {
-  numPointers = numPointers + 1;
-  debugLog(numPointers+ " pointers touching");
-  if (e.target === svg && numPointers === 1) {
+  debugLog("Zooming "+isZooming);
+  if (e.target === svg && isZooming === false) {
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
     svg.setPointerCapture(e.pointerId);
@@ -81,8 +81,8 @@ svg.addEventListener("pointerdown", (e) => {
 });
 
 svg.addEventListener("pointermove", (e) => {
-  debugLog("pointermove");
-  if (isPanning && numPointers === 1) {
+  debugLog("Zooming "+isZooming);
+  if (isPanning && isZooming === false) {
     const dx = e.clientX - panStart.x;
     const dy = e.clientY - panStart.y;
     viewState.x += dx / viewState.scale;
@@ -96,8 +96,7 @@ svg.addEventListener("pointermove", (e) => {
 });
 
 svg.addEventListener("pointerup", (e) => {
-  numPointers = numPointers - 1;
-  debugLog(numPointers+ " pointers touching");
+  debugLog("Zooming "+isZooming);
   if (isPanning) {
     isPanning = false;
     svg.releasePointerCapture(e.pointerId);
