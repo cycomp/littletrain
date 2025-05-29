@@ -55,7 +55,7 @@ export function setScale(cursor, scaleDelta) {
 }
 
 svg.addEventListener("wheel", (e) => {
-  debugLog("wheel");
+  //debugLog("wheel");
   e.preventDefault();
   const zoomFactor = 1.1;
   const mouse = svg.createSVGPoint();
@@ -73,7 +73,7 @@ let panStart = { x: 0, y: 0 };
 
 
 svg.addEventListener("pointerdown", (e) => {
-  debugLog("Zooming "+isZooming);
+  //debugLog("Zooming "+isZooming);
   if (e.target === svg && isZooming === false) {
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
@@ -82,7 +82,7 @@ svg.addEventListener("pointerdown", (e) => {
 });
 
 svg.addEventListener("pointermove", (e) => {
-  debugLog("Zooming "+isZooming);
+  //debugLog("Zooming "+isZooming);
   if (isPanning && isZooming === false) {
     // Convert previous screen position to SVG coordinates
     const startPoint = svg.createSVGPoint();
@@ -114,7 +114,7 @@ svg.addEventListener("pointermove", (e) => {
 });
 
 svg.addEventListener("pointerup", (e) => {
-  debugLog("Zooming "+isZooming);
+  //debugLog("Zooming "+isZooming);
   if (isPanning) {
     isPanning = false;
     svg.releasePointerCapture(e.pointerId);
