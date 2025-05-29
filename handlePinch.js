@@ -1,5 +1,10 @@
 import { setScale } from "./trackEditor.js";
 
+function debugLog(msg) {
+  const box = document.getElementById("debug");
+  box.innerText = msg;
+}
+
 const svg = document.getElementById("editor");
 
 let isZooming = false;
@@ -7,6 +12,7 @@ let pinchPrevCenter = null;
 let pinchPrevDistance = null;
 
 svg.addEventListener("touchstart", (e) => {
+  debugLog("touchstart");
   if (e.touches.length === 2) {
     isZooming = true;
   }
@@ -44,6 +50,7 @@ svg.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 svg.addEventListener("touchend", (e) => {
+  debugLog("touchend");
   if (e.touches.length < 2) {
     isZooming = false;
     pinchPrevCenter = null;
@@ -52,6 +59,7 @@ svg.addEventListener("touchend", (e) => {
 }, { passive: false });
 
 svg.addEventListener("touchcancel", () => {
+    debugLog("touchcancel");
   isZooming = false;
   pinchPrevCenter = null;
   pinchPrevDistance = null;
