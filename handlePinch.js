@@ -12,7 +12,7 @@ let pinchPrevCenter = null;
 let pinchPrevDistance = null;
 
 svg.addEventListener("touchstart", (e) => {
-  debugLog("touchstart");
+  //debugLog("touchstart");
   if (e.touches.length === 2) {
     isZooming = true;
   }
@@ -50,7 +50,7 @@ svg.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 svg.addEventListener("touchend", (e) => {
-  debugLog("touchend");
+  //debugLog("touchend");
   if (e.touches.length < 2) {
     isZooming = false;
     pinchPrevCenter = null;
@@ -59,7 +59,7 @@ svg.addEventListener("touchend", (e) => {
 }, { passive: false });
 
 svg.addEventListener("touchcancel", () => {
-  debugLog("touchcancel");
+  //debugLog("touchcancel");
   isZooming = false;
   pinchPrevCenter = null;
   pinchPrevDistance = null;
