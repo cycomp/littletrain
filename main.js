@@ -25,6 +25,7 @@ function open3dView(canvas) {
   resetView();
   
   GLOBALS.speed = 0;
+  GLOBALS.maxAbsSpeed = 1;
   GLOBALS.directionSign = 1;
   GLOBALS.lastDirectionSign = GLOBALS.directionSign; // Tracks previous direction (for detecting reversals)
   GLOBALS.THRESHOLD = 2;
@@ -777,7 +778,6 @@ document.getElementById("decreaseSpeed").addEventListener("pointerdown", () => {
   adjustSpeed(-0.1);  
 });
 
-GLOBALS.maxAbsSpeed = 1;
 
 function adjustSpeed(change) {
   GLOBALS.speed = Math.round(Math.max(-GLOBALS.maxAbsSpeed, Math.min(GLOBALS.speed + change, GLOBALS.maxAbsSpeed)) * 10) / 10;
