@@ -1,6 +1,12 @@
 const svg = document.getElementById('editor');
 const viewport = document.getElementById("viewport");
 
+
+function debugLog(msg) {
+  const box = document.getElementById("debug");
+  box.innerText = msg;
+}
+
 let viewState = {
   scale: 1,
   x: 0,
@@ -47,6 +53,7 @@ export function setScale(cursor, scaleDelta) {
 }
 
 svg.addEventListener("wheel", (e) => {
+  debugLog("wheel");
   e.preventDefault();
   const zoomFactor = 1.1;
   const mouse = svg.createSVGPoint();
@@ -63,6 +70,7 @@ let isPanning = false;
 let panStart = { x: 0, y: 0 };
 
 svg.addEventListener("pointerdown", (e) => {
+  debugLog("pointerdown");
   if (e.target === svg) {
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
@@ -71,6 +79,7 @@ svg.addEventListener("pointerdown", (e) => {
 });
 
 svg.addEventListener("pointermove", (e) => {
+  debugLog("pointermove");
   if (isPanning) {
     const dx = e.clientX - panStart.x;
     const dy = e.clientY - panStart.y;
@@ -88,8 +97,6 @@ svg.addEventListener("pointerup", (e) => {
     svg.releasePointerCapture(e.pointerId);
   }
 });
-
-
 
 export function setPieceIdCounter(newValue) {
   pieceIdCounter = newValue;
