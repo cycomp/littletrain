@@ -7,7 +7,7 @@ function debugLog(msg) {
 
 const svg = document.getElementById("editor");
 
-let isZooming = false;
+export let isZooming = false;
 let pinchPrevCenter = null;
 let pinchPrevDistance = null;
 
