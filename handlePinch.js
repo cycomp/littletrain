@@ -7,6 +7,11 @@ let startTouches = null;
 let startMidpoint = null;
 let startDistance = null;
 
+let pinchPrevCenter = null;
+let pinchPrevDistance = null;
+
+
+
 function getMidpoint(t1, t2) {
   return {
     x: (t1.clientX + t2.clientX) / 2,
@@ -39,7 +44,7 @@ svg.addEventListener("touchmove", (e) => {
 
     if (startDistance > 0) {
       const scaleDelta = currentDistance / startDistance;
-      setScale(startMidpoint, scaleDelta);
+      setScale(currentMidpoint, scaleDelta);
     }
   }
 }, { passive: false });
