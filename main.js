@@ -131,7 +131,8 @@ function createFollowCamera(scene, target, canvas) {
     followCamera.rotationOffset = 270;
     followCamera.cameraAcceleration = 0.05;
     followCamera.maxCameraSpeed = 20;
-
+    followCamera.lowerHeightOffsetLimit = 1;
+    followCamera.lowerRadiusLimit = 20;
     return followCamera;
 }
 
@@ -184,12 +185,14 @@ function openEditor() {
     GLOBALS = {};
     console.log("shouldn't be any state left");
   }
-  
+ 
   //hide track editor and display simulationView
   let editorView = document.getElementById("editorView");
   let simulationView = document.getElementById("simulationView")
   editorView.classList.remove('hidden');
   simulationView.classList.add('hidden');
+  resetView();
+  debugLog("");
 }
 
 document.getElementById('render').addEventListener('click', handleRenderButtonClick);
@@ -373,12 +376,12 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
           for (let i=0; i<length; i++) {
             let point = getPointAtLengthUnified(element, i)
             let worldPoint = getTransformedEndpoint(startPiece, point)
-            console.log(layoutBoundingBox, worldPoint);
+            //console.log(layoutBoundingBox, worldPoint);
             if (worldPoint.x > layoutBoundingBox.maxX) { layoutBoundingBox.maxX = worldPoint.x};
             if (worldPoint.x < layoutBoundingBox.minX) { layoutBoundingBox.minX = worldPoint.x};
             if (worldPoint.y > layoutBoundingBox.maxY) { layoutBoundingBox.maxY = worldPoint.y};
             if (worldPoint.y < layoutBoundingBox.minY) { layoutBoundingBox.minY = worldPoint.y};
-            console.log(layoutBoundingBox);
+            //console.log(layoutBoundingBox);
             segmentPoints.push(worldPoint);
           }
 
