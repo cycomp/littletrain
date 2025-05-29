@@ -1,6 +1,11 @@
 import { allPieces, point1, point2, point3, resetView } from "./trackEditor.js"
 import { showToast } from "./saveLoadLayouts.js"
 
+function debugLog(msg) {
+  const box = document.getElementById("debug");
+  box.innerText = msg;
+}
+
 let babylonState = null;
 
 function createScene(canvas, engine) {
@@ -44,7 +49,11 @@ function open3dView(canvas) {
 
 
   //start named render loop
-  const renderLoop = () => scene.render();
+  const renderLoop = () => {
+    scene.render();
+    debugLog(`FPS: ${engine.getFps().toFixed(1)}`);
+  };
+  
   engine.runRenderLoop(renderLoop);
   
   requestAnimationFrame(() => {
@@ -765,11 +774,14 @@ document.getElementById("decreaseSpeed").addEventListener("pointerdown", () => {
   adjustSpeed(-0.1);  
 });
 
+GLOBALS.maxAbsSpeed = 1;
 
 function adjustSpeed(change) {
-  GLOBALS.speed = Math.round(Math.max(-2, Math.min(GLOBALS.speed + change, 2)) * 10) / 10;
+  GLOBALS.speed = Math.round(Math.max(-GLOBALS.maxAbsSpeed, Math.min(GLOBALS.speed + change, GLOBALS.maxAbsSpeed)) * 10) / 10;
   GLOBALS.directionSign = Math.sign(GLOBALS.speed);
   console.log(GLOBALS.speed);
+  let speedOutput = document.getElementById("speedOutput");
+  speedOutput.innerText = GLOBALS.speed*10;
 }
 
  
