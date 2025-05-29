@@ -59,8 +59,12 @@ svg.addEventListener("touchend", (e) => {
 }, { passive: false });
 
 svg.addEventListener("touchcancel", () => {
-    debugLog("touchcancel");
+  debugLog("touchcancel");
   isZooming = false;
   pinchPrevCenter = null;
   pinchPrevDistance = null;
 });
+
+svg.addEventListener("pointercancel", () => {
+  isZooming = false;
+})
