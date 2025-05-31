@@ -1,4 +1,4 @@
-import { allPieces, point1, point2, point3, resetView } from "./trackEditor.js"
+import { allPieces, point1, point2, point3, resetView, zoomToFit } from "./trackEditor.js"
 import { showToast } from "./saveLoadLayouts.js"
 
 function debugLog(msg) {
@@ -19,7 +19,7 @@ function createScene(canvas, engine) {
 };
 
 function open3dView(canvas) {
-  console.log("opening 3d view");
+  //console.log("opening 3d view");
   const engine = new BABYLON.Engine(canvas, true);
   const scene = createScene(canvas, engine);
   resetView();
@@ -35,7 +35,7 @@ function open3dView(canvas) {
   GLOBALS.wheelCircumference = Math.PI * wheelDiameter;  // Circumference = π * diameter
 
 
-  console.log(GLOBALS.speed);
+  //console.log(GLOBALS.speed);
   
   //Begin to display the track
   let trainEngine = convertPiecesToPath(allPieces, scene);
@@ -173,7 +173,19 @@ function createArcRotateCamera(scene, canvas) {
 document.getElementById('toEditor').addEventListener('click', openEditor);
 
 function openEditor() {
-  //teardown babylon engine
+  //hide track editor and display simulationView
+  let editorView = document.getElementById("editorView");
+  let simulationView = document.getElementById("simulationView")
+  editorView.classList.remove('hidden');
+  simulationView.classList.add('hidden');
+  
+  resetView();
+  const svg = document.getElementById('editor');
+  zoomToFit(GLOBALS.layoutBoundingBox, svg);
+  
+  debugLog("");
+  
+  //teardown babylon engine and global state
   if (babylonState) {
     const { canvas, engine, scene, renderLoop, onResizeHandler } = babylonState;
 
@@ -184,16 +196,8 @@ function openEditor() {
   
     babylonState = null;
     GLOBALS = {};
-    console.log("shouldn't be any state left");
   }
- 
-  //hide track editor and display simulationView
-  let editorView = document.getElementById("editorView");
-  let simulationView = document.getElementById("simulationView")
-  editorView.classList.remove('hidden');
-  simulationView.classList.add('hidden');
-  resetView();
-  debugLog("");
+  
 }
 
 document.getElementById('render').addEventListener('click', handleRenderButtonClick);
@@ -335,8 +339,11 @@ function getEdgeKey(a, b) {
   return `${a}-${b}`;
 }
 
+//ugly mess here... this function adds world co-ordinate space points to all the pieces that are connected to the starting piece.
+//it ALSO returns the bounding box for all those connected pieces.
+
 function addWorldPointsToPieces(connectionsGraph, startKey) {
-  const allPaths = [];
+  //const allPaths = [];
   const visitedEdges = new Set();
   const layoutBoundingBox = {};
   layoutBoundingBox.maxX = -Infinity;
@@ -365,46 +372,25 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
         const startPiece = getPieceById(startPoint.pieceId);
         const endPiece = getPieceById(endPoint.pieceId);
 
-        const segmentPoints = []
-
         if (startPiece === endPiece) {
           const elements = startPiece.querySelectorAll("line, path");
           let element = findMatchingElementFromEndpoints(elements, startPiece.endpoints, startPoint, endPoint)  
 
-          const length = getElementLengthUnified(element);
+          const { segmentPoints, segmentBoundingBox } = getWorldPointsForSegment(startPiece, element);
           
+          if (segmentBoundingBox.maxX > layoutBoundingBox.maxX) { layoutBoundingBox.maxX = segmentBoundingBox.maxX};
+          if (segmentBoundingBox.minX < layoutBoundingBox.minX) { layoutBoundingBox.minX = segmentBoundingBox.minX};
+          if (segmentBoundingBox.maxY > layoutBoundingBox.maxY) { layoutBoundingBox.maxY = segmentBoundingBox.maxY};
+          if (segmentBoundingBox.minY < layoutBoundingBox.minY) { layoutBoundingBox.minY = segmentBoundingBox.minY};
+          //console.log(layoutBoundingBox, segmentBoundingBox);
           
-          for (let i=0; i<length; i++) {
-            let point = getPointAtLengthUnified(element, i)
-            let worldPoint = getTransformedEndpoint(startPiece, point)
-            //console.log(layoutBoundingBox, worldPoint);
-            if (worldPoint.x > layoutBoundingBox.maxX) { layoutBoundingBox.maxX = worldPoint.x};
-            if (worldPoint.x < layoutBoundingBox.minX) { layoutBoundingBox.minX = worldPoint.x};
-            if (worldPoint.y > layoutBoundingBox.maxY) { layoutBoundingBox.maxY = worldPoint.y};
-            if (worldPoint.y < layoutBoundingBox.minY) { layoutBoundingBox.minY = worldPoint.y};
-            //console.log(layoutBoundingBox);
-            segmentPoints.push(worldPoint);
-          }
-
-           // Ensure start and end points are correctly placed
-          const firstPoint = getTransformedEndpoint(startPiece, getPointAtLengthUnified(element, 0));
-          const lastPoint = getTransformedEndpoint(startPiece, getPointAtLengthUnified(element, length));
-
-          if (segmentPoints[0].x !== firstPoint.x || segmentPoints[0].y !== firstPoint.y) {
-            segmentPoints.unshift(firstPoint); // Add start point at the beginning
-          }
-
-          if (segmentPoints[segmentPoints.length - 1].x !== lastPoint.x || segmentPoints[segmentPoints.length - 1].y !== lastPoint.y) {
-            segmentPoints.push(lastPoint); // Add end point at the end
-          }
-          
-
           if (!startPiece.worldPoints) {
             startPiece.worldPoints = new Map();
           }
           startPiece.worldPoints.set(edgeKey, segmentPoints);
           //console.log(edgeKey);
           //console.log(startPiece.worldPoints.get(edgeKey));
+          //console.log(layoutBoundingBox);
           
           let reversedEdgeKey = makeReverseEdgeKey(currentKey, neighbour);
           let reversedSegmentPoints = [...segmentPoints].reverse();
@@ -421,6 +407,44 @@ function addWorldPointsToPieces(connectionsGraph, startKey) {
   recurse(startKey);
   //console.log(allPieces);
   return layoutBoundingBox;
+}
+
+
+export function getWorldPointsForSegment(piece, element) {
+  const segmentPoints = []
+  const length = getElementLengthUnified(element);
+  
+  const segmentBoundingBox = {};
+  segmentBoundingBox.maxX = -Infinity;
+  segmentBoundingBox.minX = Infinity;
+  segmentBoundingBox.maxY = -Infinity;
+  segmentBoundingBox.minY = Infinity;
+    
+  for (let i=0; i<length; i++) {
+    let point = getPointAtLengthUnified(element, i)
+    let worldPoint = getTransformedEndpoint(piece, point)
+    //console.log(layoutBoundingBox, worldPoint);
+    if (worldPoint.x > segmentBoundingBox.maxX) { segmentBoundingBox.maxX = worldPoint.x};
+    if (worldPoint.x < segmentBoundingBox.minX) { segmentBoundingBox.minX = worldPoint.x};
+    if (worldPoint.y > segmentBoundingBox.maxY) { segmentBoundingBox.maxY = worldPoint.y};
+    if (worldPoint.y < segmentBoundingBox.minY) { segmentBoundingBox.minY = worldPoint.y};
+    //console.log(layoutBoundingBox);
+    segmentPoints.push(worldPoint);
+  }
+
+   // Ensure start and end points are correctly placed
+  const firstPoint = getTransformedEndpoint(piece, getPointAtLengthUnified(element, 0));
+  const lastPoint = getTransformedEndpoint(piece, getPointAtLengthUnified(element, length));
+
+  if (segmentPoints[0].x !== firstPoint.x || segmentPoints[0].y !== firstPoint.y) {
+    segmentPoints.unshift(firstPoint); // Add start point at the beginning
+  }
+
+  if (segmentPoints[segmentPoints.length - 1].x !== lastPoint.x || segmentPoints[segmentPoints.length - 1].y !== lastPoint.y) {
+    segmentPoints.push(lastPoint); // Add end point at the end
+  }
+  
+  return {segmentPoints, segmentBoundingBox};
 }
 
 
@@ -586,9 +610,14 @@ function displayTrack(layoutBoundingBox, scene) {
 
   for (const piece of allPieces) {
     //console.log(piece.worldPoints);
-    for (const [edgeKey, segmentPoints] of piece.worldPoints.entries()) {
-      const adjustedPoints = segmentPoints.map(p => new BABYLON.Vector3(p.x - midpoints.x, 0, p.y - midpoints.y));
-      piece.worldPoints.set(edgeKey, adjustedPoints);
+    if (piece.worldPoints instanceof Map) {
+      for (const [edgeKey, segmentPoints] of piece.worldPoints.entries()) {
+        const adjustedPoints = segmentPoints.map(p => new BABYLON.Vector3(p.x - midpoints.x, 0, p.y - midpoints.y));
+        piece.worldPoints.set(edgeKey, adjustedPoints);
+      }      
+    } else {
+      showToast("Track pieces must all be connected");
+      throw new Error(`Missing worldPoints on piece ${piece.dataset.id}`);
     }
   }
   
@@ -596,14 +625,49 @@ function displayTrack(layoutBoundingBox, scene) {
     if (!piece.worldPoints) continue;
 
     let lines = null;
-    
-    for (const [edgeKey, segmentPoints] of piece.worldPoints.entries()) {
+    //check if it is a non-turnout piece
+    if (piece.endpoints.length === 2) {
+      //only need the first entry of the worldpoints map because the second entry is a reverse of the first
+      //the second entry is needed for reversing trains but not for drawing the track
+      const [edgeKey, segmentPoints] = piece.worldPoints.entries().next().value;
       const positions = segmentPoints;
       const lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
-      lines.color = new BABYLON.Color3(0.2,0.2,0.2);
+      lines.color = new BABYLON.Color3(0,0,0); 
     }
 
+
     if (piece.endpoints.length === 3) {
+      console.log(piece.worldPoints);
+      GLOBALS.pointEdges = {};
+      
+      let [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 0);
+      let positions = segmentPoints;
+      let lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
+      let [a,b] = getEndpointsFromEdgeKey(edgeKey);
+      let nonZeroEndpoint = getNonZeroEndpoint([a,b]);
+      if (nonZeroEndpoint === 1) {
+        lines.color = new BABYLON.Color3(0,0,0);
+        GLOBALS.pointEdges.toEndpoint1 = lines;
+      } else {
+        //this is the initially inactive endpoint
+        lines.color = new BABYLON.Color3(1,0,0);
+        GLOBALS.pointEdges.toEndpoint2 = lines;
+        
+      }
+      
+      [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 2);
+      positions = segmentPoints;
+      lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
+      [a,b] = getEndpointsFromEdgeKey(edgeKey);
+      nonZeroEndpoint = getNonZeroEndpoint([a,b]);
+      if (nonZeroEndpoint === 1) {
+        lines.color = new BABYLON.Color3(0,0,0);
+        GLOBALS.pointEdges.toEndpoint1 = lines;
+      } else {
+        lines.color = new BABYLON.Color3(1,0,0);
+        GLOBALS.pointEdges.toEndpoint2 = lines;
+      }
+      
       const points = getAllSegmentPoints(piece);
       makeClickableBoundingBox(piece, points, scene)
     }
@@ -614,6 +678,44 @@ function displayTrack(layoutBoundingBox, scene) {
   GLOBALS.layoutSize = Math.max(width, height);
 
 }
+
+function getNonZeroEndpoint(endpoints) {
+  if (!endpoints.includes(0)) {
+    throw new Error("Expected one endpoint to be 0");
+  }
+
+  if (endpoints.includes(1)) return 1;
+  if (endpoints.includes(2)) return 2;
+
+  throw new Error("Expected other endpoint to be 1 or 2");
+}
+
+function getEndpointsFromEdgeKey(edgeKey) {
+  const match = edgeKey.match(/_([0-9]+)-.*_([0-9]+)/);
+  if (!match) {
+    throw new Error(`Invalid edge key format: ${edgeKey}`);
+  }
+
+  return [parseInt(match[1], 10), parseInt(match[2], 10)];
+}
+
+
+function getNthEntry(map, n) {
+  const iterator = map.entries();
+  let result = iterator.next();
+  let index = 0;
+
+  while (!result.done) {
+    if (index === n) {
+      return result.value; // [key, value]
+    }
+    result = iterator.next();
+    index++;
+  }
+
+  return undefined; // Not found
+}
+
 
 
 function getAllSegmentPoints(piece) {
@@ -658,13 +760,14 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
   box.actionManager.registerAction(
     new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function(evt) {
       const pickedHandle = evt.meshUnderPointer;
-      console.log("active endpoint", piece.activeEndpoint);
+      console.log("previous active endpoint", piece.activeEndpoint);
       if (piece.activeEndpoint === point2) { 
         piece.activeEndpoint = point3 
       } else if (piece.activeEndpoint === point3) {
         piece.activeEndpoint = point2
       };
-      console.log("active endpoint", piece.activeEndpoint);
+      console.log("new active endpoint", piece.activeEndpoint);
+      highlightActiveEndpoint(piece, scene);
     })
   );
   box.visibility = 0; // invisible
@@ -672,6 +775,28 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
   box.metadata = { piece }; // store link back to piece
 
   return box;
+}
+
+function highlightActiveEndpoint(piece, scene) {
+  console.log(piece.activeEndpoint);
+  //console.log(piece.endpoints[piece.activeEndpoint])
+
+  //make the edge with the active endpoint black
+  let line1 = GLOBALS.pointEdges.toEndpoint1;
+  let line2 = GLOBALS.pointEdges.toEndpoint2;
+
+  //console.log(line1, line2);
+  console.log("activeEndpoint value and type:", piece.activeEndpoint, typeof piece.activeEndpoint);
+
+  if (piece.activeEndpoint === "1") {
+    line1.color = new BABYLON.Color3(0, 0, 0); // change to red
+    line2.color = new BABYLON.Color3(1, 0, 0); // change to black
+    console.log("change to endpoint 1");
+  } else {
+    line1.color = new BABYLON.Color3(1, 0, 0); // change to black
+    line2.color = new BABYLON.Color3(0, 0, 0); // change to red
+    console.log("change to endpoint 2");
+  }
 }
 
 
@@ -865,7 +990,7 @@ function startTrain(startKey, connectionsGraph, scene) {
   let toIndex = parseKey(currentEndpointKey).index;
   let fromIndex = parseKey(previousEndpointKey).index;
 
-  console.log(currentPiece.dataset.id, fromIndex, toIndex);
+  //console.log(currentPiece.dataset.id, fromIndex, toIndex);
   //debugger;
   
   
@@ -904,13 +1029,13 @@ function startTrain(startKey, connectionsGraph, scene) {
       
       const nextEndpointKey = findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGraph);
       if (!nextEndpointKey) {
-        console.log("Dead End");
+        //console.log("Dead End");
         if (GLOBALS.speed !== 0) {
           GLOBALS.speed = 0;
         }
         return;
       } 
-      console.log(previousEndpointKey, currentEndpointKey, nextEndpointKey);
+      //console.log(previousEndpointKey, currentEndpointKey, nextEndpointKey);
   
       const nextPieceId = parseKey(nextEndpointKey).pieceId;
       currentPieceId = parseKey(currentEndpointKey).pieceId;
@@ -1041,17 +1166,18 @@ function placeEngineAtStart(engine, thisPoint, nextPoint, initialDirection, engi
 
 
 function convertPiecesToPath(pieces, scene) {
-  console.log(pieces);
+  //console.log(pieces);
   
   let connectionsGraph = createGraph(pieces);
 
   //Start traversal from first key in the graph
   const startKey = [...connectionsGraph.keys()][0];
 
-  const layoutBoundingBox = addWorldPointsToPieces(connectionsGraph, startKey);
+  GLOBALS.layoutBoundingBox = addWorldPointsToPieces(connectionsGraph, startKey);
+  console.log(GLOBALS.layoutBoundingBox);
 
 
-  displayTrack(layoutBoundingBox, scene);
+  displayTrack(GLOBALS.layoutBoundingBox, scene);
   let trainEngine = startTrain(startKey, connectionsGraph, scene);
 
   return trainEngine;
