@@ -1,5 +1,6 @@
 import { isZooming } from "./handlePinch.js"
 
+
 const svg = document.getElementById('editor');
 const viewport = document.getElementById("viewport");
 
@@ -53,6 +54,46 @@ export function setScale(cursor, scaleDelta) {
   updateViewTransform();
   drawGrid();
 }
+
+export function zoomToFit(bbox, svgElement) {
+  console.log(bbox);
+  const bboxWidth = bbox.maxX - bbox.minX;
+  const bboxHeight = bbox.maxY - bbox.minY;
+
+  const viewportWidth = svgElement.clientWidth;
+  const viewportHeight = svgElement.clientHeight;
+
+  // Add padding (10%)
+  const padding = 0.1;
+  const paddedWidth = bboxWidth * (1 + padding);
+  const paddedHeight = bboxHeight * (1 + padding);
+
+  // Compute the scale
+  const scaleX = viewportWidth / paddedWidth;
+  const scaleY = viewportHeight / paddedHeight;
+  const scale = Math.min(scaleX, scaleY);
+
+  // Clamp scale
+  const clampedScale = Math.max(minScale, Math.min(maxScale, scale));
+
+  // Center of bounding box in world coordinates
+  const bboxCenterX = (bbox.minX + bbox.maxX) / 2;
+  const bboxCenterY = (bbox.minY + bbox.maxY) / 2;
+
+  // Center of viewport in screen coordinates
+  const viewCenterX = viewportWidth / 2;
+  const viewCenterY = viewportHeight / 2;
+
+  // Compute view translation so bbox center maps to viewport center
+  viewState.scale = clampedScale;
+  viewState.x = viewCenterX - bboxCenterX * clampedScale;
+  viewState.y = viewCenterY - bboxCenterY * clampedScale;
+
+  updateViewTransform();
+  drawGrid();
+}
+
+
 
 svg.addEventListener("wheel", (e) => {
   //debugLog("wheel");
@@ -184,19 +225,20 @@ function rotateActivePiece() {
 document.getElementById("bin").addEventListener("click", deleteActivePiece);
 
 function deleteActivePiece() {
-  console.log(activePiece);
+  console.log(allPieces, activePiece);
   if (activePiece) {
     allPieces = allPieces.filter(p => p !== activePiece);
     viewport.removeChild(activePiece);
     activePiece = undefined;
   }
+  console.log(allPieces);
 }
 
 
 const trackButton = document.getElementById("track");
 const trackTypeMenu = document.getElementById("track-type-menu");
 const pieceMenu = document.getElementById('track-piece-menu');
-console.log(trackButton);
+//console.log(trackButton);
 
 // Toggle the type menu when clicking the track button
 trackButton.addEventListener('pointerdown', (e) => {
@@ -429,7 +471,7 @@ let activePiece;
 document.addEventListener('pointerdown', (e) => {
   const icon = e.target.closest('.track-icon');
   const piece = e.target.closest('.track-piece');
-  console.log(e.target);
+  //console.log(e.target);
 
   if (icon) {
     const type = icon.dataset.type;
@@ -452,7 +494,7 @@ document.addEventListener('pointerdown', (e) => {
     changePieceColour(piece, "red");
   } else {
     //deselect active piece if the rotation or delete buttons hasn't been clicked on
-    console.log(e.target.classList);
+    //console.log(e.target.classList);
     if (!e.target.classList.contains("pieceEffector")) {
       if (activePiece) {
         changePieceColour(activePiece, "black");
