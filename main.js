@@ -908,11 +908,13 @@ function adjustSpeed(change) {
   GLOBALS.speed = Math.round(Math.max(-GLOBALS.maxAbsSpeed, Math.min(GLOBALS.speed + change, GLOBALS.maxAbsSpeed)) * 10) / 10;
   GLOBALS.directionSign = Math.sign(GLOBALS.speed);
   console.log(GLOBALS.speed);
+  updateSpeedDisplay();
+}
+
+function updateSpeedDisplay() {
   let speedOutput = document.getElementById("speedOutput");
   speedOutput.innerText = GLOBALS.speed*10;
 }
-
- 
 
 function startTrain(startKey, connectionsGraph, scene) {
   const engineLength = 20;
@@ -1032,6 +1034,7 @@ function startTrain(startKey, connectionsGraph, scene) {
         //console.log("Dead End");
         if (GLOBALS.speed !== 0) {
           GLOBALS.speed = 0;
+          updateSpeedDisplay()
         }
         return;
       } 
