@@ -1,5 +1,7 @@
 import { allPieces, point1, point2, point3, resetView, zoomToFit } from "./trackEditor.js"
 import { showToast } from "./saveLoadLayouts.js"
+import { createRailTrack } from "./createTrack.js";
+
 
 function debugLog(msg) {
   const box = document.getElementById("debug");
@@ -29,6 +31,7 @@ function open3dView(canvas) {
   GLOBALS.directionSign = 1;
   GLOBALS.lastDirectionSign = GLOBALS.directionSign; // Tracks previous direction (for detecting reversals)
   GLOBALS.THRESHOLD = 2;
+  GLOBALS.pointEdges = {};
 
   // Constants for wheel rotation
   const wheelDiameter = 3;  // Diameter of the wheel
@@ -631,43 +634,48 @@ function displayTrack(layoutBoundingBox, scene) {
       //the second entry is needed for reversing trains but not for drawing the track
       const [edgeKey, segmentPoints] = piece.worldPoints.entries().next().value;
       const positions = segmentPoints;
-      const lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
-      lines.color = new BABYLON.Color3(0,0,0); 
+      //const lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
+      createRailTrack(positions, scene);
+      //lines.color = new BABYLON.Color3(0,0,0); 
     }
 
 
     if (piece.endpoints.length === 3) {
-      console.log(piece.worldPoints);
-      GLOBALS.pointEdges = {};
+      //console.log(piece.worldPoints);
+      const pieceId = piece.dataset.id;
+      GLOBALS.pointEdges[pieceId] = {}
       
       let [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 0);
       let positions = segmentPoints;
       let lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
+      createRailTrack(positions, scene);
       let [a,b] = getEndpointsFromEdgeKey(edgeKey);
       let nonZeroEndpoint = getNonZeroEndpoint([a,b]);
       if (nonZeroEndpoint === 1) {
         lines.color = new BABYLON.Color3(0,0,0);
-        GLOBALS.pointEdges.toEndpoint1 = lines;
+        GLOBALS.pointEdges[pieceId].toEndpoint1 = lines;
       } else {
         //this is the initially inactive endpoint
         lines.color = new BABYLON.Color3(1,0,0);
-        GLOBALS.pointEdges.toEndpoint2 = lines;
+        GLOBALS.pointEdges[pieceId].toEndpoint2 = lines;
         
       }
       
       [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 2);
       positions = segmentPoints;
       lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
+      createRailTrack(positions, scene);
       [a,b] = getEndpointsFromEdgeKey(edgeKey);
       nonZeroEndpoint = getNonZeroEndpoint([a,b]);
       if (nonZeroEndpoint === 1) {
         lines.color = new BABYLON.Color3(0,0,0);
-        GLOBALS.pointEdges.toEndpoint1 = lines;
+        GLOBALS.pointEdges[pieceId].toEndpoint1 = lines;
       } else {
         lines.color = new BABYLON.Color3(1,0,0);
-        GLOBALS.pointEdges.toEndpoint2 = lines;
+        GLOBALS.pointEdges[pieceId].toEndpoint2 = lines;
       }
-      
+
+      console.log(GLOBALS.pointEdges);
       const points = getAllSegmentPoints(piece);
       makeClickableBoundingBox(piece, points, scene)
     }
@@ -751,7 +759,7 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
   const box = BABYLON.MeshBuilder.CreateBox(`clickBox-${piece.dataset.id}`, {
     width: width,
     depth: depth,
-    height: 0.5 // thin clickable surface
+    height: 1 // thin clickable surface
   }, scene);
 
   box.position = new BABYLON.Vector3(centerX, 0.05, centerZ); // slightly above ground
@@ -780,10 +788,11 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
 function highlightActiveEndpoint(piece, scene) {
   console.log(piece.activeEndpoint);
   //console.log(piece.endpoints[piece.activeEndpoint])
-
+  const pieceId = piece.dataset.id;
+  console.log(GLOBALS.pointEdges);
   //make the edge with the active endpoint black
-  let line1 = GLOBALS.pointEdges.toEndpoint1;
-  let line2 = GLOBALS.pointEdges.toEndpoint2;
+  let line1 = GLOBALS.pointEdges[pieceId].toEndpoint1;
+  let line2 = GLOBALS.pointEdges[pieceId].toEndpoint2;
 
   //console.log(line1, line2);
   console.log("activeEndpoint value and type:", piece.activeEndpoint, typeof piece.activeEndpoint);
@@ -920,7 +929,7 @@ function startTrain(startKey, connectionsGraph, scene) {
   const engineLength = 20;
   const engine = BABYLON.MeshBuilder.CreateBox("engine", { width: engineLength, height: 6, depth: 4 }, scene);
 
-  let engineElevation = 4.5;
+  let engineElevation = 5.25;
   engine.position.y = engineElevation;
 
   const engineBodyMaterial = new BABYLON.StandardMaterial("engineBodyMaterial", scene);
