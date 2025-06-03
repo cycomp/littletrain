@@ -1,6 +1,6 @@
 import { allPieces, point1, point2, point3, resetView, zoomToFit } from "./trackEditor.js"
 import { showToast } from "./saveLoadLayouts.js"
-import { createRailTrack } from "./createTrack.js";
+import { createTrackPiece } from "./createTrack.js";
 
 
 function debugLog(msg) {
@@ -551,7 +551,7 @@ function getPointAtLengthUnified(element, length) {
   throw new Error("Unsupported SVG element type for getPointAtLengthUnified");
 }
 
-function getElementLengthUnified(element) {
+export function getElementLengthUnified(element) {
   const tag = element.tagName.toLowerCase();
   if (tag === 'path') {
     return element.getTotalLength(); // only works for <path> elements
@@ -592,7 +592,7 @@ function displayTrack(layoutBoundingBox, scene) {
   if (oldGround) {
     oldGround.dispose();
   }
-
+  
   const width = layoutBoundingBox.maxX - layoutBoundingBox.minX;
   const height = layoutBoundingBox.maxY - layoutBoundingBox.minY;
 
@@ -625,104 +625,28 @@ function displayTrack(layoutBoundingBox, scene) {
   }
   
   for (const piece of allPieces) {
-    if (!piece.worldPoints) continue;
-
-    let lines = null;
-    //check if it is a non-turnout piece
-    if (piece.endpoints.length === 2) {
-      //only need the first entry of the worldpoints map because the second entry is a reverse of the first
-      //the second entry is needed for reversing trains but not for drawing the track
-      const [edgeKey, segmentPoints] = piece.worldPoints.entries().next().value;
-      const positions = segmentPoints;
-      //const lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
-      createRailTrack(positions, scene);
-      //lines.color = new BABYLON.Color3(0,0,0); 
-    }
-
-
+    if (!piece.worldPoints) {
+      continue;
+    } 
+    createTrackPiece(piece, scene);
     if (piece.endpoints.length === 3) {
-      //console.log(piece.worldPoints);
-      const pieceId = piece.dataset.id;
-      GLOBALS.pointEdges[pieceId] = {}
-      
-      let [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 0);
-      let positions = segmentPoints;
-      let lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
-      createRailTrack(positions, scene);
-      let [a,b] = getEndpointsFromEdgeKey(edgeKey);
-      let nonZeroEndpoint = getNonZeroEndpoint([a,b]);
-      if (nonZeroEndpoint === 1) {
-        lines.color = new BABYLON.Color3(0,0,0);
-        GLOBALS.pointEdges[pieceId].toEndpoint1 = lines;
-      } else {
-        //this is the initially inactive endpoint
-        lines.color = new BABYLON.Color3(1,0,0);
-        GLOBALS.pointEdges[pieceId].toEndpoint2 = lines;
-        
-      }
-      
-      [edgeKey, segmentPoints] = getNthEntry(piece.worldPoints, 2);
-      positions = segmentPoints;
-      lines = BABYLON.MeshBuilder.CreateLines(`segment-${edgeKey}`, { points: positions }, scene);
-      createRailTrack(positions, scene);
-      [a,b] = getEndpointsFromEdgeKey(edgeKey);
-      nonZeroEndpoint = getNonZeroEndpoint([a,b]);
-      if (nonZeroEndpoint === 1) {
-        lines.color = new BABYLON.Color3(0,0,0);
-        GLOBALS.pointEdges[pieceId].toEndpoint1 = lines;
-      } else {
-        lines.color = new BABYLON.Color3(1,0,0);
-        GLOBALS.pointEdges[pieceId].toEndpoint2 = lines;
-      }
-
-      console.log(GLOBALS.pointEdges);
-      const points = getAllSegmentPoints(piece);
+      const points = getAllSegmentPoints(piece)
       makeClickableBoundingBox(piece, points, scene)
     }
   }
-  //scene.debugLayer.show();
 
   // After setting up the scene and camera
   GLOBALS.layoutSize = Math.max(width, height);
 
 }
 
-function getNonZeroEndpoint(endpoints) {
-  if (!endpoints.includes(0)) {
-    throw new Error("Expected one endpoint to be 0");
+export function savePointEdgesMesh(pieceId, key, mesh) {
+  if (!GLOBALS.pointEdges[pieceId]) {
+    GLOBALS.pointEdges[pieceId] = {};
   }
-
-  if (endpoints.includes(1)) return 1;
-  if (endpoints.includes(2)) return 2;
-
-  throw new Error("Expected other endpoint to be 1 or 2");
+  GLOBALS.pointEdges[pieceId][key] = mesh;
 }
 
-function getEndpointsFromEdgeKey(edgeKey) {
-  const match = edgeKey.match(/_([0-9]+)-.*_([0-9]+)/);
-  if (!match) {
-    throw new Error(`Invalid edge key format: ${edgeKey}`);
-  }
-
-  return [parseInt(match[1], 10), parseInt(match[2], 10)];
-}
-
-
-function getNthEntry(map, n) {
-  const iterator = map.entries();
-  let result = iterator.next();
-  let index = 0;
-
-  while (!result.done) {
-    if (index === n) {
-      return result.value; // [key, value]
-    }
-    result = iterator.next();
-    index++;
-  }
-
-  return undefined; // Not found
-}
 
 
 
@@ -768,7 +692,7 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
   box.actionManager.registerAction(
     new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function(evt) {
       const pickedHandle = evt.meshUnderPointer;
-      console.log("previous active endpoint", piece.activeEndpoint);
+      //console.log("previous active endpoint", piece.activeEndpoint);
       if (piece.activeEndpoint === point2) { 
         piece.activeEndpoint = point3 
       } else if (piece.activeEndpoint === point3) {
@@ -785,26 +709,38 @@ function makeClickableBoundingBox(piece, segmentPoints, scene) {
   return box;
 }
 
-function highlightActiveEndpoint(piece, scene) {
+export function highlightActiveEndpoint(piece, scene) {
   console.log(piece.activeEndpoint);
   //console.log(piece.endpoints[piece.activeEndpoint])
   const pieceId = piece.dataset.id;
-  console.log(GLOBALS.pointEdges);
+  console.log(GLOBALS.pointEdges[pieceId].toEndpoint1);
   //make the edge with the active endpoint black
-  let line1 = GLOBALS.pointEdges[pieceId].toEndpoint1;
-  let line2 = GLOBALS.pointEdges[pieceId].toEndpoint2;
+  let lineOneMergedRails = GLOBALS.pointEdges[pieceId].toEndpoint1.mergedRails;
+  let lineOneMergedSleepers = GLOBALS.pointEdges[pieceId].toEndpoint1.mergedSleepers;
+  let lineTwoMergedRails = GLOBALS.pointEdges[pieceId].toEndpoint2.mergedRails;
+  let lineTwoMergedSleepers = GLOBALS.pointEdges[pieceId].toEndpoint2.mergedSleepers;
 
-  //console.log(line1, line2);
-  console.log("activeEndpoint value and type:", piece.activeEndpoint, typeof piece.activeEndpoint);
+  let railMaterial = new BABYLON.StandardMaterial("railMaterial", scene);
+  railMaterial.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
 
-  if (piece.activeEndpoint === "1") {
-    line1.color = new BABYLON.Color3(0, 0, 0); // change to red
-    line2.color = new BABYLON.Color3(1, 0, 0); // change to black
-    console.log("change to endpoint 1");
+  let sleeperMaterial = new BABYLON.StandardMaterial("sleeperMat", scene);
+  sleeperMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.2, 0.1);
+
+  let redMaterial = new BABYLON.StandardMaterial("redMat", scene);
+  redMaterial.diffuseColor = new BABYLON.Color3(0.6, 0.6, 0.6);
+  
+  //console.log(lineOneMergedRails, lineOneMergedSleepers);
+
+  if (piece.activeEndpoint === "2") {
+    lineOneMergedRails.material = redMaterial;
+    lineOneMergedSleepers.material = redMaterial;
+    lineTwoMergedRails.material = railMaterial
+    lineTwoMergedSleepers.material = sleeperMaterial;
   } else {
-    line1.color = new BABYLON.Color3(1, 0, 0); // change to black
-    line2.color = new BABYLON.Color3(0, 0, 0); // change to red
-    console.log("change to endpoint 2");
+    lineOneMergedRails.material = railMaterial;
+    lineOneMergedSleepers.material = sleeperMaterial;
+    lineTwoMergedRails.material = redMaterial;
+    lineTwoMergedSleepers.material = redMaterial;
   }
 }
 
@@ -834,7 +770,7 @@ function findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGr
 
   //Special handling for turnouts
   if (isTurnout(currentPiece)) {
-    console.log(currentPieceId)
+    //console.log(currentPieceId)
     const center = 0;
 
     let isSamePiece = false;
@@ -842,7 +778,7 @@ function findNextEndpoint(previousEndpointKey, currentEndpointKey, connectionsGr
       isSamePiece = true;
     }
 
-    console.log(previousPieceId, currentPieceId, isSamePiece);
+    //console.log(previousPieceId, currentPieceId, isSamePiece);
     
     // Case 1: Coming from within same piece, must go to a different piece
     if (isSamePiece) {
@@ -916,7 +852,7 @@ document.getElementById("decreaseSpeed").addEventListener("pointerdown", () => {
 function adjustSpeed(change) {
   GLOBALS.speed = Math.round(Math.max(-GLOBALS.maxAbsSpeed, Math.min(GLOBALS.speed + change, GLOBALS.maxAbsSpeed)) * 10) / 10;
   GLOBALS.directionSign = Math.sign(GLOBALS.speed);
-  console.log(GLOBALS.speed);
+  //console.log(GLOBALS.speed);
   updateSpeedDisplay();
 }
 
@@ -1082,7 +1018,7 @@ function startTrain(startKey, connectionsGraph, scene) {
       // We're about to move in the opposite direction along the same segment
       const fromPoint = segment[pointIndex];
       const toPoint = segment[pointIndex + previousDirectionSign];
-      console.log(segment, pointIndex, previousDirectionSign);
+      //console.log(segment, pointIndex, previousDirectionSign);
       if (toPoint === undefined) {
         travelProgress = 0;
         previousDirectionSign = GLOBALS.directionSign;
